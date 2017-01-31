@@ -36,8 +36,7 @@ import datetime
 #User input
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 expName = 'RestState'  # from the Builder filename that created this script
-expInfo = {'age': u'', u'participant': u'', 'session':u'', 'visit':u'V1',
-'test mode':False}
+expInfo = {'age': u'', u'participant': u'', 'session':u'', 'test mode':False}
 dlg = gui.DlgFromDict(dictionary=expInfo, title=expName)
 if dlg.OK == False: core.quit()  # user pressed cancel
 expInfo['date'] = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')  # add a simple timestamp
@@ -63,8 +62,8 @@ runTime = 401
 quitKey = 'escape'
 
 # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
-filename = _thisDir + os.sep + u'data/HCD%s_%s_%s_%s_%s' %(expInfo['participant'], expInfo['visit'],
-            expInfo['session'], expName, expInfo['date'])
+filename = _thisDir + os.sep + u'data/%s_%s_%s_%s' %(expName, expInfo['participant'],
+            expInfo['session'], expInfo['date'])
 print(filename)
 #Video encoding:
 vidExt = '.mp4'
@@ -215,7 +214,7 @@ def writeVid(update_queue, quit_flag, thisRun):
     #CV2 does not like to run in two processes simultaneously:
     import imageio
     #Create video writer object:
-    out_file = filename + "_Scan" + str(thisRun+1) + vidExt
+    out_file = filename + "_run" + str(thisRun+1) + vidExt
     out = imageio.get_writer(out_file, fps=rec_frame_rate)
     while not quit_flag.value:
         #Keep popping and writing frames:
