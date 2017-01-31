@@ -7,7 +7,7 @@ If you publish work using this script please cite the relevant PsychoPy publicat
   Peirce, JW (2009) Generating stimuli for neuroscience using PsychoPy. Frontiers in Neuroinformatics, 2:10. doi: 10.3389/neuro.11.010.2008
 ***************************************************************************************************************
 Script to display fixation cross to participant while recording eye video via frame grabber
-or webcam (tested with Epiphan VGA2USB 3.0
+or webcam (tested with Epiphan DVI2USB 3.0)
 
 Displays real-time Eyelink video for RA on main monitor
 ***************************************************************************************************************
@@ -18,12 +18,13 @@ Works best with at least 8 GB of RAM and SSD hard drive (for faster video output
 Tested on a Macbook Pro (OS 10.11.6) and a Macbook Air (OS 10.12.2)
 Gian Klobusicky
 gklobusicky@fas.harvard.edu
-01/14/2017
+01/31/2017
 """
 
 from multiprocessing import Process, Queue, Value
 from ctypes import c_bool
 from psychopy import locale_setup, visual, core, data, event, logging, sound, gui
+import pyglet
 import cv2
 import numpy as np
 import pandas as pd
@@ -50,6 +51,7 @@ eye_cam = 1
 rec_frame_rate = 30
 #Number of seconds in a run:
 runTime = 401
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #User input
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -69,6 +71,9 @@ vidExt = '.mp4'
 #Time stamp file name:
 out_file_ts = filename + '_ts.csv'
 
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#Basic experiment setup
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # An ExperimentHandler isn't essential but helps with data saving
 thisExp = data.ExperimentHandler(name=expName, version='',
     extraInfo=expInfo, runtimeInfo=None,
@@ -78,6 +83,12 @@ thisExp = data.ExperimentHandler(name=expName, version='',
 #save a log file for detail verbose info
 logFile = logging.LogFile(filename+'.log', level=logging.EXP)
 logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a file
+#Create display:
+display = pyglet.window.get_platform().get_default_display()
+screens = display.get_screens()
+#dims for participant screen (ra screen set below):
+pwidth = screens[pScreen].width
+pheight = screens[pScreen].height
 
 endExpNow = False  # flag for 'escape' or other condition => quit the exp
 
@@ -104,7 +115,7 @@ if age >=8 and age <= 80:
     nRuns=2
 else: #if 5-7yo or 81+ yo
     nRuns=3
-    
+
 triggerKey = config['trigger'] #5 at Harvard
 titleLetterSize = config['style']['titleLetterSize']  # 3
 textLetterSize = config['style']['textLetterSize']  # 1.5
@@ -154,13 +165,8 @@ def reFrame(fr, aperture):
 #Present fixation, leave it up until script ends
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def fixCross():
-    import pyglet
-    display = pyglet.window.get_platform().get_default_display()
-    screens = display.get_screens()
-    width = screens[pScreen].width
-    height = screens[pScreen].height
     # Setup the Window
-    win = visual.Window(size=(width, height), fullscr=False, screen=pScreen, allowGUI=False, allowStencil=False,
+    win = visual.Window(size=(pwidth, pheight), fullscr=False, screen=pScreen, allowGUI=False, allowStencil=False,
     monitor='testMonitor', color=[-1,-1,-1], colorSpace='rgb',
     blendMode='avg', useFBO=True,
     units='deg')
@@ -170,6 +176,7 @@ def fixCross():
     color='white', colorSpace='rgb', opacity=1,
     depth=-1.0)
     cross.draw(win)
+    win.mouseVisible = False
     win.flip()
     return win
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -177,14 +184,14 @@ def fixCross():
 #Returns trigger timestamp
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def waitForTrigger():
-    trigger_ts = core.getTime() 
+    trigger_ts = core.getTime()
     while not event.getKeys(triggerKey):
         trigger_ts = core.getTime() #time stamp for start of scan
     print('Trigger received!!!')
     return trigger_ts
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Video writing function
-#To be run in parallel with data collection loop in main 
+#To be run in parallel with data collection loop in main
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def writeVid(update_queue, quit_flag, thisRun):
     #CV2 does not like to run in two processes simultaneously:
@@ -232,7 +239,7 @@ if __name__ == "__main__":
     for thisRun in range(nRuns):
         if recVideo:
             #Create video capture object to control camera/frame grabber:
-            cap = cv2.VideoCapture(eye_cam) 
+            cap = cv2.VideoCapture(eye_cam)
             cap.set(cv2.cv.CV_CAP_PROP_FPS, value=rec_frame_rate)
             #Read a frame, get dims:
             ret, frame = cap.read()
@@ -262,9 +269,11 @@ if __name__ == "__main__":
             #Data collection loop:
             recText.draw(raWin)
             raWin.flip()
+            raWin.winHandle.activate()
         else:
             norecText.draw(raWin)
             raWin.flip()
+            raWin.winHandle.activate()
         scanOver = False
         while not scanOver and not endExpNow:
             #Check to see if resting state scan is over:
@@ -294,6 +303,7 @@ if __name__ == "__main__":
         if recVideo:
             ioText.draw(raWin)
             raWin.flip()
+            raWin.winHandle.activate()
             #Flip quit_flag to True when done:
             quit_flag.value = True
             #End writing proca:
