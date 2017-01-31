@@ -1,0 +1,6 @@
+aperture: [249, 461, 379, 631]
+record: 'yes'
+style: {fixLetterSize: 2.5, subtitleLetterSize: 1, textLetterSize: 1.25, titleLetterSize: 3,
+  wrapWidth: 30}
+trigger: '5'
+use_aperture: 'yes'
