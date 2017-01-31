@@ -51,7 +51,8 @@ eye_cam = 1
 rec_frame_rate = 30
 #Number of seconds in a run:
 runTime = 401
-
+#Key that ends experiment:
+quitKey = 'escape'
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #User input
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -152,8 +153,15 @@ def instruct():
     raText.draw()
     raWin.flip()
     raWin.winHandle.activate()
-    while not event.getKeys("space"):
-        pass
+    loopOver = False
+    while not loopOver:
+        inkeys = event.getKeys()
+        if quitKey in inkeys:
+            endExpNow = True
+            core.quit()
+            loopOver = True
+        elif 'space' in inkeys:
+            loopOver = True
     return raWin
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Image cropping function
@@ -185,8 +193,16 @@ def fixCross():
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def waitForTrigger():
     trigger_ts = core.getTime()
-    while not event.getKeys(triggerKey):
-        trigger_ts = core.getTime() #time stamp for start of scan
+    loopOver = False
+    while not loopOver:
+        inkeys = event.getKeys()
+        if triggerKey in inkeys:
+            trigger_ts = core.getTime() #time stamp for start of scan
+            loopOver = True
+        elif quitKey in inkeys:
+            endExpNow = True
+            core.quit()
+            loopOver = True
     print('Trigger received!!!')
     return trigger_ts
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -280,9 +296,14 @@ if __name__ == "__main__":
             scanOver = (runTS[thisRun][-1]-trigger_ts)>runTime
             #collect time stamp for each image:
             runTS[thisRun]+=[core.getTime()]
-            if event.getKeys('escape'):
+            if event.getKeys(quitKey):
                 scanOver = True
+                writeProc.terminate()
+                cap.release()
+                core.quit()
+                cv2.destroyAllWindows()
                 endExpNow = True
+                break
             if recVideo:
                 #read a frame, queue it, and display it:
                 ret, frame = cap.read()
@@ -292,14 +313,6 @@ if __name__ == "__main__":
                 else:
                     update_queue.put(frame)
                     cv2.imshow('RA View', frame)
-            if endExpNow:
-                print("User quit!")
-                if recVideo:
-                    writeProc.terminate()
-                    cap.release()
-                    cv2.destroyAllWindows()
-                core.quit()
-                break
         if recVideo:
             ioText.draw(raWin)
             raWin.flip()
