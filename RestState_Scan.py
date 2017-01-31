@@ -118,6 +118,10 @@ if age >=8 and age <= 80:
 else: #if 5-7yo or 81+ yo
     nRuns=3
 
+#ASL scans only have one run
+if expInfo['scan type']=='ASL':
+    nRuns = 1
+
 triggerKey = config['trigger'] #5 at Harvard
 titleLetterSize = config['style']['titleLetterSize']  # 3
 textLetterSize = config['style']['textLetterSize']  # 1.5
