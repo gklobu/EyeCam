@@ -130,7 +130,7 @@ if recVideo and useAperture:
 
 def instruct():
     # Setup the RA Experimenter Window
-    raWin = visual.Window(size=[1280,800], fullscr=False, allowGUI=True, allowStencil=False,
+    raWin = visual.Window(size=[1100,675], fullscr=False, allowGUI=True, allowStencil=False,
         monitor=u'testMonitor', color=u'black', colorSpace='rgb',
         blendMode='avg', useFBO=True,
         units='deg',
