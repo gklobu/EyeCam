@@ -35,13 +35,16 @@ import datetime
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #User input
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-expName = 'RestState'  # from the Builder filename that created this script
-expInfo = {'age': u'', u'participant': u'', 'session':u'', 'test mode':False}
-dlg = gui.DlgFromDict(dictionary=expInfo, title=expName)
+expInfo = {'scan type':['SELECT SCAN TYPE', 'REST', 'ASL'], 'age': u'', u'participant': u'', 'session':u'', 'test mode':False}
+dlg = gui.DlgFromDict(dictionary=expInfo, title='Eye Cam')
 if dlg.OK == False: core.quit()  # user pressed cancel
 expInfo['date'] = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')  # add a simple timestamp
-expInfo['expName'] = expName
+if expInfo['scan type']=='SELECT SCAN TYPE':
+    raise ValueError('CHOOSE A SCAN TYPE!!!')
+else:
+    expName = expInfo['scan type']
 
+expInfo['expName'] = expName
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Params
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -57,7 +60,7 @@ pMon = "testMonitor"
 #Frame rate (for recording):
 rec_frame_rate = 30
 #Number of seconds in a run:
-runTime = 401
+runTime = 401 if expName=='REST' else 240
 #Key that ends experiment:
 quitKey = 'escape'
 
@@ -137,7 +140,7 @@ def instruct():
         units='deg',
         screen=raScreen)
     introText = visual.TextStim(win=raWin, ori=0, name='introText',
-        text='REST SCAN', font='Arial',
+        text=expName+'SCAN', font='Arial',
         pos=[0, 0], height=titleLetterSize, wrapWidth=30,
         color='white', colorSpace='rgb', opacity=1,
         depth=-1.0)
@@ -293,7 +296,7 @@ if __name__ == "__main__":
             raWin.winHandle.activate()
         scanOver = False
         while not scanOver and not endExpNow:
-            #Check to see if resting state scan is over:
+            #Check to see if scan is over:
             scanOver = (runTS[thisRun][-1]-trigger_ts)>runTime
             #collect time stamp for each image:
             runTS[thisRun]+=[core.getTime()]
