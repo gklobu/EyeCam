@@ -33,6 +33,17 @@ import sys
 import datetime
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#User input
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+expName = 'RestState'  # from the Builder filename that created this script
+expInfo = {'age': u'', u'participant': u'', 'session':u'', 'visit':u'V1',
+'test mode':False}
+dlg = gui.DlgFromDict(dictionary=expInfo, title=expName)
+if dlg.OK == False: core.quit()  # user pressed cancel
+expInfo['date'] = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')  # add a simple timestamp
+expInfo['expName'] = expName
+
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Params
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Ensure that relative paths start from the same directory as this script
@@ -44,24 +55,12 @@ pScreen = 1
 raScreen = 0
 #Monitor calibration (for participant's screen):
 pMon = "testMonitor"
-#Camera number (should be 1 for scanning if using computer w/ built-in camera (e.g., FaceTime on a Macbook);
-#use 0 if your computer does not have a built-in camera or if you are testing script w/ built-in camera:
-eye_cam = 1
 #Frame rate (for recording):
 rec_frame_rate = 30
 #Number of seconds in a run:
 runTime = 401
 #Key that ends experiment:
 quitKey = 'escape'
-#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-#User input
-#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-expName = 'RestState'  # from the Builder filename that created this script
-expInfo = {'age': u'', u'participant': u'', 'session':u'', 'visit':u'V1'}
-dlg = gui.DlgFromDict(dictionary=expInfo, title=expName)
-if dlg.OK == False: core.quit()  # user pressed cancel
-expInfo['date'] = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')  # add a simple timestamp
-expInfo['expName'] = expName
 
 # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
 filename = _thisDir + os.sep + u'data/HCD%s_%s_%s_%s_%s' %(expInfo['participant'], expInfo['visit'],
@@ -127,6 +126,9 @@ recVideo = config['record']=='yes'
 useAperture = config['use_aperture'] == 'yes'
 if recVideo and useAperture:
     aperture = config['aperture']
+#Camera number (should be 1 for scanning if using computer w/ built-in camera (e.g., FaceTime on a Macbook);
+#use 0 if your computer does not have a built-in camera or if you are testing script w/ built-in camera:
+eye_cam = 1 if config['dualCam'] and not expInfo['test mode'] else 0
 
 def instruct():
     # Setup the RA Experimenter Window

@@ -1,4 +1,5 @@
 aperture: [249, 461, 379, 631]
+dualCam: 'yes'
 record: 'yes'
 style: {fixLetterSize: 2.5, subtitleLetterSize: 1, textLetterSize: 1, titleLetterSize: 2.5,
   wrapWidth: 30}
