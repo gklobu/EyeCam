@@ -18,7 +18,7 @@ Works best with at least 8 GB of RAM and SSD hard drive (for faster video output
 Tested on a Macbook Pro (OS 10.11.6) and a Macbook Air (OS 10.12.2)
 Gian Klobusicky
 gklobusicky@fas.harvard.edu
-01/31/2017
+02/01/2017
 """
 
 from multiprocessing import Process, Queue, Value
@@ -219,8 +219,6 @@ def waitForTrigger():
 #Countdown (for consistency w/ other scripts)
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def count_down(win):
-    print("WINDOW")
-    print(win)
     # Create images for Routine "countdown"
     counter = visual.TextStim(win=win, ori=0, name='one',
         text='4', font='Arial', pos=[0, 0], height=titleLetterSize, wrapWidth=None,
@@ -309,7 +307,6 @@ if __name__ == "__main__":
         trigger_ts = waitForTrigger()
         #Capture a timestamp for every frame (1st entry will be trigger):
         runTS[thisRun]+=[trigger_ts]
-        print("HERE!!")
         countText.draw(raWin)
         raWin.flip()
         count_down(win)
