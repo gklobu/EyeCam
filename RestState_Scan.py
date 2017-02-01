@@ -95,7 +95,6 @@ pheight = screens[pScreen].height
 endExpNow = False  # flag for 'escape' or other condition => quit the exp
 
 # Initialize components for Routine "intro"
-introClock = core.Clock()
 import yaml
 import itertools
 
@@ -136,6 +135,20 @@ if recVideo and useAperture:
 #use 0 if your computer does not have a built-in camera or if you are testing script w/ built-in camera:
 eye_cam = 1 if config['dualCam'] and not expInfo['test mode'] else 0
 
+# Setup the participant Window
+win = visual.Window(size=(pwidth, pheight), fullscr=False, screen=pScreen, allowGUI=False, allowStencil=False,
+monitor='testMonitor', color=[-1,-1,-1], colorSpace='rgb',
+blendMode='avg', useFBO=True,
+units='deg')
+#Create fixation cross object:
+cross = visual.TextStim(win=win, ori=0, name='cross',
+text='+',    font='Arial',
+pos=[0, 0], height=fixLetterSize, wrapWidth=None,
+color='white', colorSpace='rgb', opacity=1,
+depth=-1.0)
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#Instruction screen function
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def instruct():
     # Setup the RA Experimenter Window
     raWin = visual.Window(size=[1100,675], fullscr=False, allowGUI=True, allowStencil=False,
@@ -180,21 +193,10 @@ def reFrame(fr, aperture):
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Present fixation, leave it up until script ends
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-def fixCross():
-    # Setup the Window
-    win = visual.Window(size=(pwidth, pheight), fullscr=False, screen=pScreen, allowGUI=False, allowStencil=False,
-    monitor='testMonitor', color=[-1,-1,-1], colorSpace='rgb',
-    blendMode='avg', useFBO=True,
-    units='deg')
-    cross = visual.TextStim(win=win, ori=0, name='cross',
-    text='+',    font='Arial',
-    pos=[0, 0], height=fixLetterSize, wrapWidth=None,
-    color='white', colorSpace='rgb', opacity=1,
-    depth=-1.0)
+def fixCross(win, cross):
     cross.draw(win)
     win.mouseVisible = False
     win.flip()
-    return win
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Wait for scanner trigger
 #Returns trigger timestamp
@@ -213,6 +215,27 @@ def waitForTrigger():
             loopOver = True
     print('Trigger received!!!')
     return trigger_ts
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#Countdown (for consistency w/ other scripts)
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+def count_down(win):
+    print("WINDOW")
+    print(win)
+    # Create images for Routine "countdown"
+    counter = visual.TextStim(win=win, ori=0, name='one',
+        text='4', font='Arial', pos=[0, 0], height=titleLetterSize, wrapWidth=None,
+        color='white', colorSpace='rgb', opacity=1,
+        depth=-3.0)
+    for this_one in range(4,0,-1):
+        counter.setText(str(this_one))
+        counter.draw(win)
+        win.flip()
+        flip_time = core.getTime()
+        win.mouseVisible = False
+        while core.getTime()-flip_time<2:
+            if event.getKeys(quitKey):
+                core.quit()
+                break
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Video writing function
 #To be run in parallel with data collection loop in main
@@ -234,12 +257,17 @@ def writeVid(update_queue, quit_flag, thisRun):
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 if __name__ == "__main__":
     #Display fixation:
-    win = fixCross()
+    fixCross(win, cross)
     #Display RA instructions:
     raWin = instruct()
     #Create other instructions:
     waitText = visual.TextStim(win=raWin, ori=0, name='introText',
         text='Waiting for trigger...', font='Arial',
+        pos=[0, 0], height=titleLetterSize, wrapWidth=30,
+        color='white', colorSpace='rgb', opacity=1,
+        depth=-1.0)
+    countText = visual.TextStim(win=raWin, ori=0, name='countText',
+        text='Count down...', font='Arial',
         pos=[0, 0], height=titleLetterSize, wrapWidth=30,
         color='white', colorSpace='rgb', opacity=1,
         depth=-1.0)
@@ -281,6 +309,11 @@ if __name__ == "__main__":
         trigger_ts = waitForTrigger()
         #Capture a timestamp for every frame (1st entry will be trigger):
         runTS[thisRun]+=[trigger_ts]
+        print("HERE!!")
+        countText.draw(raWin)
+        raWin.flip()
+        count_down(win)
+        fixCross(win, cross)
         if recVideo:
             #Queue of frames from cap; data collection loop adds frames, video writing process
             #pops frames (FIFO):
