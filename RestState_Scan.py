@@ -38,8 +38,9 @@ import datetime
 expInfo = {'scan type':['SELECT SCAN TYPE', 'REST', 'ASL'], 'age': u'', u'participant': u'', 'session':u'', 'test mode':False}
 dlg = gui.DlgFromDict(dictionary=expInfo, title='Eye Cam')
 if dlg.OK == False: core.quit()  # user pressed cancel
-expInfo['date'] = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')  # add a simple timestamp
-if expInfo['scan type']=='SELECT SCAN TYPE':
+expInfo['date'] = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S'
+                                                   )  # add a simple timestamp
+if expInfo['scan type'] == 'SELECT SCAN TYPE':
     raise ValueError('CHOOSE A SCAN TYPE!!!')
 else:
     expName = expInfo['scan type']
@@ -49,7 +50,8 @@ expInfo['expName'] = expName
 #Params
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Ensure that relative paths start from the same directory as this script
-_thisDir = os.path.dirname(os.path.abspath(__file__)).decode(sys.getfilesystemencoding())
+_thisDir = os.path.dirname(os.path.abspath(__file__)).decode(
+    sys.getfilesystemencoding())
 os.chdir(_thisDir)
 #Participant's screen (for fixation cross; should be 1, indicating an external monitor, while scanning; may use 0 to test script without external monitor):
 pScreen = 1
@@ -112,22 +114,22 @@ try:
 except ValueError:
     raise ValueError("Please enter age in years")
 
-if age >=8 and age <= 80:
-    nRuns=2
-else: #if 5-7yo or 81+ yo
-    nRuns=3
+if age >= 8 and age <= 80:
+    nRuns = 2
+else:  #if 5-7yo or 81+ yo
+    nRuns = 3
 
 #ASL scans only have one run
 if expInfo['scan type']=='ASL':
     nRuns = 1
 
-triggerKey = config['trigger'] #5 at Harvard
+triggerKey = config['trigger']  #5 at Harvard
 titleLetterSize = config['style']['titleLetterSize']  # 3
 textLetterSize = config['style']['textLetterSize']  # 1.5
 fixLetterSize = config['style']['fixLetterSize']  # 2.5
 wrapWidth = config['style']['wrapWidth']  # 30
 subtitleLetterSize = config['style']['subtitleLetterSize']  # 1
-recVideo = config['record']=='yes'
+recVideo = config['record'] == 'yes'
 useAperture = config['use_aperture'] == 'yes'
 if recVideo and useAperture:
     aperture = config['aperture']
@@ -170,7 +172,7 @@ def instruct():
     outerFrame = visual.Rect(win=raWin, lineWidth=1, lineColor='white',
                              width=35, height=23, units='deg')
     #Update RA text (i.e., instructions):
-    raText.text='"In the next scan all you are going to see is a white plus sign in the middle of the screen. Your job is to simply rest, keep your eyes open, and look at the plus sign during the entire scan. You can blink normally, and you do not have to think about anything in particular. However, it is very important that you do not fall asleep, and as always, that you stay very still from beginning to end. \n\nDoes that make sense? Do you have any questions? Are you ready to begin?" \n\nPress <space> to continue.'
+    raText.text = '"In the next scan all you are going to see is a white plus sign in the middle of the screen. Your job is to simply rest, keep your eyes open, and look at the plus sign during the entire scan. You can blink normally, and you do not have to think about anything in particular. However, it is very important that you do not fall asleep, and as always, that you stay very still from beginning to end. \n\nDoes that make sense? Do you have any questions? Are you ready to begin?" \n\nPress <space> to continue.'
     raText.draw()
     raWin.flip()
     raWin.winHandle.activate()
@@ -184,11 +186,15 @@ def instruct():
         elif 'space' in inkeys:
             loopOver = True
     return raWin
+
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Image cropping function
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def reFrame(fr, aperture):
     return fr[aperture[0]:aperture[1], aperture[2]:aperture[3], :]
+
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Present fixation, leave it up until script ends
@@ -197,6 +203,8 @@ def fixCross(win, cross):
     cross.draw(win)
     win.mouseVisible = False
     win.flip()
+
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Wait for scanner trigger
 #Returns trigger timestamp
@@ -207,7 +215,7 @@ def waitForTrigger():
     while not loopOver:
         inkeys = event.getKeys()
         if triggerKey in inkeys:
-            trigger_ts = core.getTime() #time stamp for start of scan
+            trigger_ts = core.getTime()  #time stamp for start of scan
             loopOver = True
         elif quitKey in inkeys:
             endExpNow = True
@@ -215,25 +223,37 @@ def waitForTrigger():
             loopOver = True
     print('Trigger received!!!')
     return trigger_ts
+
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Countdown (for consistency w/ other scripts)
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def count_down(win):
     # Create images for Routine "countdown"
-    counter = visual.TextStim(win=win, ori=0, name='one',
-        text='4', font='Arial', pos=[0, 0], height=titleLetterSize, wrapWidth=None,
-        color='white', colorSpace='rgb', opacity=1,
-        depth=-3.0)
-    for this_one in range(4,0,-1):
+    counter = visual.TextStim(win=win,
+                              ori=0,
+                              name='one',
+                              text='4',
+                              font='Arial',
+                              pos=[0, 0],
+                              height=titleLetterSize,
+                              wrapWidth=None,
+                              color='white',
+                              colorSpace='rgb',
+                              opacity=1,
+                              depth=-3.0)
+    for this_one in range(4, 0, -1):
         counter.setText(str(this_one))
         counter.draw(win)
         win.flip()
         flip_time = core.getTime()
         win.mouseVisible = False
-        while core.getTime()-flip_time<2:
+        while core.getTime() - flip_time < 2:
             if event.getKeys(quitKey):
                 core.quit()
                 break
+
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Video writing function
 #To be run in parallel with data collection loop in main
@@ -242,7 +262,7 @@ def writeVid(update_queue, quit_flag, thisRun):
     #CV2 does not like to run in two processes simultaneously:
     import imageio
     #Create video writer object:
-    out_file = filename + "_run" + str(thisRun+1) + vidExt
+    out_file = filename + "_run" + str(thisRun + 1) + vidExt
     out = imageio.get_writer(out_file, fps=rec_frame_rate)
     while not quit_flag.value:
         #Keep popping and writing frames:
@@ -294,11 +314,11 @@ if __name__ == "__main__":
             #Read a frame, get dims:
             ret, frame = cap.read()
             if useAperture:
-                w=np.shape(reFrame(frame, aperture))[1]
-                h=np.shape(reFrame(frame, aperture))[0]
+                w = np.shape(reFrame(frame, aperture))[1]
+                h = np.shape(reFrame(frame, aperture))[0]
             else:
-                w=np.shape(frame)[1]
-                h=np.shape(frame)[0]
+                w = np.shape(frame)[1]
+                h = np.shape(frame)[0]
         #Indicate script is waiting for trigger:
         waitText.draw(raWin)
         raWin.flip()
@@ -306,7 +326,7 @@ if __name__ == "__main__":
         #Wait for scanner trigger:
         trigger_ts = waitForTrigger()
         #Capture a timestamp for every frame (1st entry will be trigger):
-        runTS[thisRun]+=[trigger_ts]
+        runTS[thisRun] += [trigger_ts]
         countText.draw(raWin)
         raWin.flip()
         count_down(win)
@@ -318,7 +338,9 @@ if __name__ == "__main__":
             #Flag to tell parallel process when to exit loop
             quit_flag = Value(c_bool, False)
             #Write file in another process:
-            writeProc = Process(name='Write', target=writeVid, args=(update_queue, quit_flag, thisRun))
+            writeProc = Process(name='Write',
+                                target=writeVid,
+                                args=(update_queue, quit_flag, thisRun))
             writeProc.start()
             #Data collection loop:
             recText.draw(raWin)
@@ -331,9 +353,9 @@ if __name__ == "__main__":
         scanOver = False
         while not scanOver and not endExpNow:
             #Check to see if scan is over:
-            scanOver = (runTS[thisRun][-1]-trigger_ts)>runTime
+            scanOver = (runTS[thisRun][-1] - trigger_ts) > runTime
             #collect time stamp for each image:
-            runTS[thisRun]+=[core.getTime()]
+            runTS[thisRun] += [core.getTime()]
             if event.getKeys(quitKey):
                 scanOver = True
                 writeProc.terminate()
@@ -360,13 +382,13 @@ if __name__ == "__main__":
             #End writing proca:
             writeProc.terminate()
             #Get some timing stats, print some, save the rest to .csv:
-            timing = pd.DataFrame({'TS':runTS[thisRun]})
+            timing = pd.DataFrame({'TS': runTS[thisRun]})
             timing['second'] = np.floor(timing['TS'])
             x = timing.groupby('second')['second'].count()
             print('**********************************************************')
             print('**********************************************************')
             print('**********************************************************')
-            print('Run ' + str(thisRun+1) + ' Timing Diagnostics:')
+            print('Run ' + str(thisRun + 1) + ' Timing Diagnostics:')
             print('**********************************************************')
             print('Frequency: Frames Within Each Second')
             print(x.groupby(x).count())
@@ -376,7 +398,7 @@ if __name__ == "__main__":
             cv2.destroyAllWindows()
     if recVideo:
         #Save timestamp file:
-        np.savetxt(out_file_ts, runTS[0]+runTS[1], delimiter=',')
+        np.savetxt(out_file_ts, runTS[0] + runTS[1], delimiter=',')
     #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     #Clean up & shut  down
     #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
