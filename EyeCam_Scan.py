@@ -58,34 +58,24 @@ expInfo['expName'] = expName
 _thisDir = os.path.dirname(os.path.abspath(__file__)).decode(
     sys.getfilesystemencoding())
 os.chdir(_thisDir)
-#RA's screen (for eye video monitor; 0=primary, 1=secondary and should usually be 0):
+# RA's screen (for eye video monitor; 0=primary, 1=secondary and should usually be 0):
 raScreen = 0
-#Frame rate (for recording):
+# Frame rate (for recording):
 rec_frame_rate = 30
-#Key that ends experiment:
+# Key that ends experiment:
 quitKey = 'escape'
 # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
-filename = _thisDir + os.sep + u'data/' + '_'.join([expName, expInfo[
-    'sessionID'], 'run%s' % expInfo['runNumber'], expInfo['date']])
-#Video encoding:
+filebase = _thisDir + os.sep + u'data/' + '_'.join([expName, expInfo['sessionID']])
+# Video encoding:
 vidExt = '.mp4'
-#Time stamp file name:
-out_file_ts = filename + '_ts.csv'
+# Timestamp Format
+timestampFormat = '%a %b %d %H:%M:%S %Y'
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Basic experiment setup
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# An ExperimentHandler isn't essential but helps with data saving
-thisExp = data.ExperimentHandler(name=expName,
-                                 version='',
-                                 extraInfo=expInfo,
-                                 runtimeInfo=None,
-                                 originPath=None,
-                                 savePickle=False,
-                                 saveWideText=False,
-                                 dataFileName=filename)
 #save a log file for detail verbose info
-logFile = logging.LogFile(filename + '.log', level=logging.EXP)
+logFile = logging.LogFile(filebase + '.log', level=logging.EXP)
 logging.console.setLevel(logging.WARNING
                          )  # this outputs to the screen, not a file
 
@@ -141,12 +131,14 @@ else:  # expInfo['scan type'] == 'REST'
         nRuns = 3
         runTime = 180
 
+# Set HCP Style Params
 triggerKey = config['trigger']  #5 at Harvard
 titleLetterSize = config['style']['titleLetterSize']  # 3
 textLetterSize = config['style']['textLetterSize']  # 1.5
 fixLetterSize = config['style']['fixLetterSize']  # 2.5
 wrapWidth = config['style']['wrapWidth']  # 30
 subtitleLetterSize = config['style']['subtitleLetterSize']  # 1
+verbalColor = config['style']['verbalColor'] #  '#3EB4F0'
 recVideo = config['record'] == 'yes'
 useAperture = config['use_aperture'] == 'yes'
 if recVideo and useAperture:
@@ -181,15 +173,28 @@ def instruct():
                                 color='white', colorSpace='rgb', opacity=1,
                                 depth=-1.0)
     #Create text object to hold instructions:
-    raText= visual.TextStim(win=raWin, ori=0, name='raText',
-        text='', font='Arial',
-        pos=[0, 0], height=textLetterSize*.8, wrapWidth=30,
-        color='white', colorSpace='rgb', opacity=1,
-        depth=0.0)
+    raText = visual.TextStim(win=raWin, ori=0, name='raText',
+                             text='', font='Arial',
+                             pos=[0, -3], height=textLetterSize*.8, wrapWidth=30,
+                             color='white', colorSpace='rgb', opacity=1,
+                             depth=0.0)
+    raVerbalText = visual.TextStim(win=raWin, ori=0, name='raVerbalText',
+                                   text='', font='Arial',
+                                   pos=[0,3], height=textLetterSize * .8, wrapWidth=30,
+                                   color=verbalColor, colorSpace='rgb', opacity=1,
+                                   depth=0.0, italic=True)
+                                
     outerFrame = visual.Rect(win=raWin, lineWidth=1, lineColor='white',
                              width=35, height=23, units='deg')
     #Update RA text (i.e., instructions):
-    raText.text = '"In the next scan all you are going to see is a white plus sign in the middle of the screen. Your job is to simply rest, keep your eyes open, and look at the plus sign during the entire scan. You can blink normally, and you do not have to think about anything in particular. However, it is very important that you do not fall asleep, and as always, that you stay very still from beginning to end. \n\nDoes that make sense? Do you have any questions? Are you ready to begin?" \n\nPress <space> to continue.'
+    raVerbalText.text = ('"In the next scan all you are going to see is a white plus sign in the middle '
+                         'of the screen. Your job is to simply rest, keep your eyes open, and look at the '
+                         'plus sign during the entire scan. You can blink normally, and you do not have '
+                         'to think about anything in particular. However, it is very important that you do '
+                         'not fall asleep, and as always, that you stay very still from beginning to '
+                         'end. \n\nDoes that make sense? Do you have any questions? Are you ready to begin?"')
+    raText.text = 'Press <space> to continue.'
+    raVerbalText.draw()
     raText.draw()
     raWin.flip()
     raWin.winHandle.activate()
@@ -233,13 +238,16 @@ def waitForTrigger():
         inkeys = event.getKeys()
         if triggerKey in inkeys:
             trigger_ts = core.getTime()  # time stamp for start of scan
+            triggerWallTime = datetime.datetime.today()  # Wall Time timestamp
             loopOver = True
         elif quitKey in inkeys:
             endExpNow = True
             core.quit()
             loopOver = True
-    print('Trigger received!!!')
-    return trigger_ts
+    
+    print('Trigger received at %s' % triggerWallTime.strftime(timestampFormat))
+    return trigger_ts, triggerWallTime
+
 
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -341,7 +349,14 @@ if __name__ == "__main__":
         raWin.flip()
         raWin.winHandle.activate()
         #Wait for scanner trigger:
-        trigger_ts = waitForTrigger()
+        trigger_ts, triggerWallTime = waitForTrigger()
+
+        expInfo['triggerWallTime'] = triggerWallTime.strftime(timestampFormat)
+
+        filename = filebase + '_'.join(['', 'run%s' % thisRun, expInfo['date']])
+        #Time stamp file name:
+        out_file_ts = filename + '_ts.csv'
+
         #Capture a timestamp for every frame (1st entry will be trigger):
         runTS[thisRun] += [trigger_ts]
         countText.draw(raWin)
