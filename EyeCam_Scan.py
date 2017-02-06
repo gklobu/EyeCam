@@ -81,8 +81,8 @@ thisExp = data.ExperimentHandler(name=expName,
                                  extraInfo=expInfo,
                                  runtimeInfo=None,
                                  originPath=None,
-                                 savePickle=True,
-                                 saveWideText=True,
+                                 savePickle=False,
+                                 saveWideText=False,
                                  dataFileName=filename)
 #save a log file for detail verbose info
 logFile = logging.LogFile(filename + '.log', level=logging.EXP)
