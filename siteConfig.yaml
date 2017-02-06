@@ -3,9 +3,9 @@ dualCam: 'yes'
 record: 'no'
 style: {fixLetterSize: 2.5, subtitleLetterSize: .7, textLetterSize: 1, titleLetterSize: 3,
   wrapWidth: 16}
-trigger: '5'
+trigger: '7'
 use_aperture: 'yes'
 monitor:
   width: 28.5
   distance: 70
-  screen: 0
+  screen: 1
