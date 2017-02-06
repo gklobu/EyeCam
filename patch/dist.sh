@@ -15,7 +15,7 @@ for task in REST mbPCASL; do
   cd $task
   #cp siteConfig.yaml.example siteConfig.yaml
   mv EyeCam_Scan.py ${task}_Scan.py
-  sed -i '' "s/['SELECT SCAN TYPE', 'REST', 'mbPCASL']/['${task}', 'REST', 'mbPCASL']/"
+  sed -i '' "s/\[\'SELECT SCAN TYPE\', \'REST\', \'mbPCASL\'\]/\[\'${task}\', \'REST\', \'mbPCASL\'\]/" ${task}_Scan.py
 
   # if [ "${task}" = "mbPCASL" ]; then
   #   sed -i '' "s/['SELECT SCAN TYPE', 'REST', 'mbPCASL']/['${task}', 'REST', 'mbPCASL']/"
@@ -26,6 +26,7 @@ for task in REST mbPCASL; do
   date=`date +%Y-%m-%d`
   tar=${task}-${date}-${shortHash}.tar.gz
   tar -czvf $tar $task
+  if [ ! -d $repo_dir/dist ]; then mkdir $repo_dir/dist; fi
   mv $tar $repo_dir/dist
   popd
 done
