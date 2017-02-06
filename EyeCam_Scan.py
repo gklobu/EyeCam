@@ -329,7 +329,7 @@ if __name__ == "__main__":
         pos=[0, 0], height=titleLetterSize, wrapWidth=30,
         color='white', colorSpace='rgb', opacity=1,
         depth=-1.0)
-    runTS = [[],[]]
+    runTS = [[]] * nRuns
     getOut = False
     for thisRun in range(nRuns):
         if recVideo:
