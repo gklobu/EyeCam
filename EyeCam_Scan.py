@@ -20,9 +20,7 @@ Tested with Psychopy 1.83.04 and 1.84.02
   Peirce, JW (2009) Generating stimuli for neuroscience using PsychoPy. Frontiers in Neuroinformatics, 2:10. doi: 10.3389/neuro.11.010.2008
 ***************************************************************************************************************
 """
-
 from ctypes import c_bool
-import cv2
 import datetime
 import itertools
 from multiprocessing import Process, Queue, Value
@@ -139,13 +137,18 @@ fixLetterSize = config['style']['fixLetterSize']  # 2.5
 wrapWidth = config['style']['wrapWidth']  # 30
 subtitleLetterSize = config['style']['subtitleLetterSize']  # 1
 verbalColor = config['style']['verbalColor'] #  '#3EB4F0'
+
 recVideo = config['record'] == 'yes'
 useAperture = config['use_aperture'] == 'yes'
-if recVideo and useAperture:
-    aperture = config['aperture']
-#Camera number (should be 1 for scanning if using computer w/ built-in camera (e.g., FaceTime on a Macbook);
-#use 0 if your computer does not have a built-in camera or if you are testing script w/ built-in camera:
-eye_cam = 1 if config['dualCam'] and not expInfo['test mode'] else 0
+if recVideo:
+    # Only import opencv if using video so the script is runnable w/o eyetracking setup
+    import cv2
+    if useAperture:
+        aperture = config['aperture']
+
+    #Camera number (should be 1 for scanning if using computer w/ built-in camera (e.g., FaceTime on a Macbook);
+    #use 0 if your computer does not have a built-in camera or if you are testing script w/ built-in camera:
+    eye_cam = 1 if config['dualCam'] and not expInfo['test mode'] else 0
 
 # Setup the participant Window
 win = visual.Window(size=resolution, fullscr=False, screen=pScreen, allowGUI=False, allowStencil=False,
