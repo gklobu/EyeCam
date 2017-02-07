@@ -1,11 +1,6 @@
 """
 
 ***************************************************************************************************************
-This experiment was created using PsychoPy2 Experiment Builder (v1.83.04), Thu Dec  8 16:36:30 2016
-If you publish work using this script please cite the relevant PsychoPy publications
-  Peirce, JW (2007) PsychoPy - Psychophysics software in Python. Journal of Neuroscience Methods, 162(1-2), 8-13.
-  Peirce, JW (2009) Generating stimuli for neuroscience using PsychoPy. Frontiers in Neuroinformatics, 2:10. doi: 10.3389/neuro.11.010.2008
-***************************************************************************************************************
 Script to display fixation cross to participant while recording eye video via frame grabber
 or webcam (tested with Epiphan DVI2USB 3.0)
 
@@ -19,27 +14,38 @@ Tested on a Macbook Pro (OS 10.11.6) and a Macbook Air (OS 10.12.2)
 Gian Klobusicky
 gklobusicky@fas.harvard.edu
 02/01/2017
+***************************************************************************************************************
+Tested with Psychopy 1.83.04 and 1.84.02
+  Peirce, JW (2007) PsychoPy - Psychophysics software in Python. Journal of Neuroscience Methods, 162(1-2), 8-13.
+  Peirce, JW (2009) Generating stimuli for neuroscience using PsychoPy. Frontiers in Neuroinformatics, 2:10. doi: 10.3389/neuro.11.010.2008
+***************************************************************************************************************
 """
 
-from multiprocessing import Process, Queue, Value
 from ctypes import c_bool
-from psychopy import locale_setup, visual, core, data, event, logging, sound, gui
-import pyglet
 import cv2
-import numpy as np
-import pandas as pd
-import os
-import sys
 import datetime
+import itertools
+from multiprocessing import Process, Queue, Value
+import numpy as np
+import os
+import pandas as pd
+from psychopy import locale_setup, visual, core, data, event, logging, sound, gui, monitors
+import pyglet
+import sys
+import yaml
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #User input
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-expInfo = {'scan type':['SELECT SCAN TYPE', 'REST', 'ASL'], 'age': u'', u'participant': u'', 'session':u'', 'test mode':False}
+expInfo = {'scan type': ['SELECT SCAN TYPE', 'REST', 'mbPCASL'],
+           'age': u'',
+           'sessionID': u'',
+           'runNumber': '1',
+           'test mode': False}
 dlg = gui.DlgFromDict(dictionary=expInfo, title='Eye Cam')
 if dlg.OK == False: core.quit()  # user pressed cancel
-expInfo['date'] = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')  # add a simple timestamp
-if expInfo['scan type']=='SELECT SCAN TYPE':
+expInfo['date'] = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')
+if expInfo['scan type'] == 'SELECT SCAN TYPE':
     raise ValueError('CHOOSE A SCAN TYPE!!!')
 else:
     expName = expInfo['scan type']
@@ -49,85 +55,91 @@ expInfo['expName'] = expName
 #Params
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # Ensure that relative paths start from the same directory as this script
-_thisDir = os.path.dirname(os.path.abspath(__file__)).decode(sys.getfilesystemencoding())
+_thisDir = os.path.dirname(os.path.abspath(__file__)).decode(
+    sys.getfilesystemencoding())
 os.chdir(_thisDir)
-#Participant's screen (for fixation cross; should be 1, indicating an external monitor, while scanning; may use 0 to test script without external monitor):
-pScreen = 1
-#RA's screen (for eye video monitor; should usually be 0):
+# RA's screen (for eye video monitor; 0=primary, 1=secondary and should usually be 0):
 raScreen = 0
-#Monitor calibration (for participant's screen):
-pMon = "testMonitor"
-#Frame rate (for recording):
+# Frame rate (for recording):
 rec_frame_rate = 30
-#Number of seconds in a run:
-runTime = 401 if expName=='REST' else 240
-#Key that ends experiment:
+# Key that ends experiment:
 quitKey = 'escape'
-
 # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
-filename = _thisDir + os.sep + u'data/%s_%s_%s_%s' %(expName, expInfo['participant'],
-            expInfo['session'], expInfo['date'])
-print(filename)
-#Video encoding:
+filebase = _thisDir + os.sep + u'data/' + '_'.join([expName, expInfo['sessionID']])
+# Video encoding:
 vidExt = '.mp4'
-#Time stamp file name:
-out_file_ts = filename + '_ts.csv'
+# Timestamp Format
+timestampFormat = '%a %b %d %H:%M:%S %Y'
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Basic experiment setup
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-# An ExperimentHandler isn't essential but helps with data saving
-thisExp = data.ExperimentHandler(name=expName, version='',
-    extraInfo=expInfo, runtimeInfo=None,
-    originPath=None,
-    savePickle=True, saveWideText=True,
-    dataFileName=filename)
 #save a log file for detail verbose info
-logFile = logging.LogFile(filename+'.log', level=logging.EXP)
-logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a file
-#Create display:
-display = pyglet.window.get_platform().get_default_display()
-screens = display.get_screens()
-#dims for participant screen (ra screen set below):
-pwidth = screens[pScreen].width
-pheight = screens[pScreen].height
+logFile = logging.LogFile(filebase + '.log', level=logging.EXP)
+logging.console.setLevel(logging.WARNING
+                         )  # this outputs to the screen, not a file
 
 endExpNow = False  # flag for 'escape' or other condition => quit the exp
 
-# Initialize components for Routine "intro"
-import yaml
-import itertools
 
-if os.path.exists('siteConfig.yaml'):
-    with open('siteConfig.yaml') as f:
-        config = yaml.safe_load(f)
+# Load Site-configurable parameters
+def loadConfiguration(configFile):
+    if os.path.exists(configFile):
+        with open(configFile) as f:
+            config = yaml.safe_load(f)
+    else:
+        copyMsg = ('Please copy configuration text file '
+                   '"%s.example" to "%s" '
+                   'and edit it with your trigger and buttons.' % 2 *
+                   [os.path.basename(configFile)])
+        raise IOError(copyMsg)
+    return config
+
+
+config = loadConfiguration('siteConfig.yaml')
+
+# Display Information
+display = pyglet.window.get_platform().get_default_display()
+screens = display.get_screens()
+if len(screens) < config['monitor']['screen']:
+    pScreen = 0
 else:
-    copyMsg = ('Please copy configuration text file '
-               '"siteConfig.yaml.example" to "siteConfig.yaml" '
-               'and edit it with your trigger and buttons.')
-    raise IOError(copyMsg)
+    pScreen = config['monitor']['screen']
+
+#dims for participant screen (ra screen set below):
+resolution = [screens[pScreen].width, screens[pScreen].height]
+
+mon = monitors.Monitor('newMonitor')
+mon.setWidth(config['monitor']['width'])
+mon.setDistance(config['monitor']['distance'])
+mon.setSizePix(resolution)
 
 try:
     age = float(expInfo['age'])
 except ValueError:
     raise ValueError("Please enter age in years")
 
-if age >=8 and age <= 80:
-    nRuns=2
-else: #if 5-7yo or 81+ yo
-    nRuns=3
-
-#ASL scans only have one run
-if expInfo['scan type']=='ASL':
+# Set Run Number and Duration based on Age and Scan Type
+if expInfo['scan type'] == 'mbPCASL':
     nRuns = 1
+    runTime = 240  # sec
+else:  # expInfo['scan type'] == 'REST'
+    if age >= 8:
+        nRuns = 2
+        runTime = 400.4  # sec plus TR adjustmnet
+    else:  #if 5-7yo or 81+ yo
+        nRuns = 3
+        runTime = 180
 
-triggerKey = config['trigger'] #5 at Harvard
+# Set HCP Style Params
+triggerKey = config['trigger']  #5 at Harvard
 titleLetterSize = config['style']['titleLetterSize']  # 3
 textLetterSize = config['style']['textLetterSize']  # 1.5
 fixLetterSize = config['style']['fixLetterSize']  # 2.5
 wrapWidth = config['style']['wrapWidth']  # 30
 subtitleLetterSize = config['style']['subtitleLetterSize']  # 1
-recVideo = config['record']=='yes'
+verbalColor = config['style']['verbalColor'] #  '#3EB4F0'
+recVideo = config['record'] == 'yes'
 useAperture = config['use_aperture'] == 'yes'
 if recVideo and useAperture:
     aperture = config['aperture']
@@ -136,41 +148,53 @@ if recVideo and useAperture:
 eye_cam = 1 if config['dualCam'] and not expInfo['test mode'] else 0
 
 # Setup the participant Window
-win = visual.Window(size=(pwidth, pheight), fullscr=False, screen=pScreen, allowGUI=False, allowStencil=False,
-monitor='testMonitor', color=[-1,-1,-1], colorSpace='rgb',
-blendMode='avg', useFBO=True,
-units='deg')
+win = visual.Window(size=resolution, fullscr=False, screen=pScreen, allowGUI=False, allowStencil=False,
+                    monitor=mon, color=[-1,-1,-1], colorSpace='rgb',
+                    blendMode='avg', useFBO=True, units='deg')
 #Create fixation cross object:
 cross = visual.TextStim(win=win, ori=0, name='cross',
-text='+',    font='Arial',
-pos=[0, 0], height=fixLetterSize, wrapWidth=None,
-color='white', colorSpace='rgb', opacity=1,
-depth=-1.0)
+                        text='+',    font='Arial',
+                        pos=[0, 0], height=fixLetterSize, wrapWidth=None,
+                        color='white', colorSpace='rgb', opacity=1,
+                        depth=-1.0)
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Instruction screen function
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def instruct():
     # Setup the RA Experimenter Window
     raWin = visual.Window(size=[1100,675], fullscr=False, allowGUI=True, allowStencil=False,
-        monitor=u'testMonitor', color=u'black', colorSpace='rgb',
-        blendMode='avg', useFBO=True,
-        units='deg',
-        screen=raScreen)
+                          monitor=u'testMonitor', color=u'black', colorSpace='rgb',
+                          blendMode='avg', useFBO=True,
+                          units='deg',
+                          screen=raScreen)
     introText = visual.TextStim(win=raWin, ori=0, name='introText',
-        text=expName+'SCAN', font='Arial',
-        pos=[0, 0], height=titleLetterSize, wrapWidth=30,
-        color='white', colorSpace='rgb', opacity=1,
-        depth=-1.0)
+                                text=expName+'SCAN', font='Arial',
+                                pos=[0, 0], height=titleLetterSize, wrapWidth=30,
+                                color='white', colorSpace='rgb', opacity=1,
+                                depth=-1.0)
     #Create text object to hold instructions:
-    raText= visual.TextStim(win=raWin, ori=0, name='raText',
-        text='', font='Arial',
-        pos=[0, 0], height=textLetterSize*.8, wrapWidth=30,
-        color='white', colorSpace='rgb', opacity=1,
-        depth=0.0)
+    raText = visual.TextStim(win=raWin, ori=0, name='raText',
+                             text='', font='Arial',
+                             pos=[0, -3], height=textLetterSize*.8, wrapWidth=30,
+                             color='white', colorSpace='rgb', opacity=1,
+                             depth=0.0)
+    raVerbalText = visual.TextStim(win=raWin, ori=0, name='raVerbalText',
+                                   text='', font='Arial',
+                                   pos=[0,3], height=textLetterSize * .8, wrapWidth=30,
+                                   color=verbalColor, colorSpace='rgb', opacity=1,
+                                   depth=0.0, italic=True)
+                                
     outerFrame = visual.Rect(win=raWin, lineWidth=1, lineColor='white',
                              width=35, height=23, units='deg')
     #Update RA text (i.e., instructions):
-    raText.text='"In the next scan all you are going to see is a white plus sign in the middle of the screen. Your job is to simply rest, keep your eyes open, and look at the plus sign during the entire scan. You can blink normally, and you do not have to think about anything in particular. However, it is very important that you do not fall asleep, and as always, that you stay very still from beginning to end. \n\nDoes that make sense? Do you have any questions? Are you ready to begin?" \n\nPress <space> to continue.'
+    raVerbalText.text = ('"In the next scan all you are going to see is a white plus sign in the middle '
+                         'of the screen. Your job is to simply rest, keep your eyes open, and look at the '
+                         'plus sign during the entire scan. You can blink normally, and you do not have '
+                         'to think about anything in particular. However, it is very important that you do '
+                         'not fall asleep, and as always, that you stay very still from beginning to '
+                         'end. \n\nDoes that make sense? Do you have any questions? Are you ready to begin?"')
+    raText.text = 'Press <space> to continue.'
+    raVerbalText.draw()
     raText.draw()
     raWin.flip()
     raWin.winHandle.activate()
@@ -184,11 +208,15 @@ def instruct():
         elif 'space' in inkeys:
             loopOver = True
     return raWin
+
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Image cropping function
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def reFrame(fr, aperture):
     return fr[aperture[0]:aperture[1], aperture[2]:aperture[3], :]
+
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Present fixation, leave it up until script ends
@@ -197,6 +225,8 @@ def fixCross(win, cross):
     cross.draw(win)
     win.mouseVisible = False
     win.flip()
+
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Wait for scanner trigger
 #Returns trigger timestamp
@@ -207,33 +237,48 @@ def waitForTrigger():
     while not loopOver:
         inkeys = event.getKeys()
         if triggerKey in inkeys:
-            trigger_ts = core.getTime() #time stamp for start of scan
+            trigger_ts = core.getTime()  # time stamp for start of scan
+            triggerWallTime = datetime.datetime.today()  # Wall Time timestamp
             loopOver = True
         elif quitKey in inkeys:
             endExpNow = True
             core.quit()
             loopOver = True
-    print('Trigger received!!!')
-    return trigger_ts
+    
+    print('Trigger received at %s' % triggerWallTime.strftime(timestampFormat))
+    return trigger_ts, triggerWallTime
+
+
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Countdown (for consistency w/ other scripts)
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def count_down(win):
     # Create images for Routine "countdown"
-    counter = visual.TextStim(win=win, ori=0, name='one',
-        text='4', font='Arial', pos=[0, 0], height=titleLetterSize, wrapWidth=None,
-        color='white', colorSpace='rgb', opacity=1,
-        depth=-3.0)
-    for this_one in range(4,0,-1):
+    counter = visual.TextStim(win=win,
+                              ori=0,
+                              name='one',
+                              text='4',
+                              font='Arial',
+                              pos=[0, 0],
+                              height=titleLetterSize,
+                              wrapWidth=None,
+                              color='white',
+                              colorSpace='rgb',
+                              opacity=1,
+                              depth=-3.0)
+    for this_one in range(4, 0, -1):
         counter.setText(str(this_one))
         counter.draw(win)
         win.flip()
         flip_time = core.getTime()
         win.mouseVisible = False
-        while core.getTime()-flip_time<2:
+        while core.getTime() - flip_time < 2:
             if event.getKeys(quitKey):
                 core.quit()
                 break
+
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Video writing function
 #To be run in parallel with data collection loop in main
@@ -242,7 +287,7 @@ def writeVid(update_queue, quit_flag, thisRun):
     #CV2 does not like to run in two processes simultaneously:
     import imageio
     #Create video writer object:
-    out_file = filename + "_run" + str(thisRun+1) + vidExt
+    out_file = filename + "_run" + str(thisRun + 1) + vidExt
     out = imageio.get_writer(out_file, fps=rec_frame_rate)
     while not quit_flag.value:
         #Keep popping and writing frames:
@@ -284,7 +329,7 @@ if __name__ == "__main__":
         pos=[0, 0], height=titleLetterSize, wrapWidth=30,
         color='white', colorSpace='rgb', opacity=1,
         depth=-1.0)
-    runTS = [[],[]]
+    runTS = [[]] * nRuns
     getOut = False
     for thisRun in range(nRuns):
         if recVideo:
@@ -294,22 +339,30 @@ if __name__ == "__main__":
             #Read a frame, get dims:
             ret, frame = cap.read()
             if useAperture:
-                w=np.shape(reFrame(frame, aperture))[1]
-                h=np.shape(reFrame(frame, aperture))[0]
+                w = np.shape(reFrame(frame, aperture))[1]
+                h = np.shape(reFrame(frame, aperture))[0]
             else:
-                w=np.shape(frame)[1]
-                h=np.shape(frame)[0]
+                w = np.shape(frame)[1]
+                h = np.shape(frame)[0]
         #Indicate script is waiting for trigger:
         waitText.draw(raWin)
         raWin.flip()
         raWin.winHandle.activate()
         #Wait for scanner trigger:
-        trigger_ts = waitForTrigger()
+        trigger_ts, triggerWallTime = waitForTrigger()
+
+        expInfo['triggerWallTime'] = triggerWallTime.strftime(timestampFormat)
+
+        filename = filebase + '_'.join(['', 'run%s' % thisRun, expInfo['date']])
+        #Time stamp file name:
+        out_file_ts = filename + '_ts.csv'
+
         #Capture a timestamp for every frame (1st entry will be trigger):
-        runTS[thisRun]+=[trigger_ts]
+        runTS[thisRun] += [trigger_ts]
         countText.draw(raWin)
         raWin.flip()
-        count_down(win)
+        if expInfo['scan type'] == 'REST':
+            count_down(win)
         fixCross(win, cross)
         if recVideo:
             #Queue of frames from cap; data collection loop adds frames, video writing process
@@ -318,7 +371,9 @@ if __name__ == "__main__":
             #Flag to tell parallel process when to exit loop
             quit_flag = Value(c_bool, False)
             #Write file in another process:
-            writeProc = Process(name='Write', target=writeVid, args=(update_queue, quit_flag, thisRun))
+            writeProc = Process(name='Write',
+                                target=writeVid,
+                                args=(update_queue, quit_flag, thisRun))
             writeProc.start()
             #Data collection loop:
             recText.draw(raWin)
@@ -331,9 +386,9 @@ if __name__ == "__main__":
         scanOver = False
         while not scanOver and not endExpNow:
             #Check to see if scan is over:
-            scanOver = (runTS[thisRun][-1]-trigger_ts)>runTime
+            scanOver = (runTS[thisRun][-1] - trigger_ts) > runTime
             #collect time stamp for each image:
-            runTS[thisRun]+=[core.getTime()]
+            runTS[thisRun] += [core.getTime()]
             if event.getKeys(quitKey):
                 scanOver = True
                 writeProc.terminate()
@@ -360,13 +415,13 @@ if __name__ == "__main__":
             #End writing proca:
             writeProc.terminate()
             #Get some timing stats, print some, save the rest to .csv:
-            timing = pd.DataFrame({'TS':runTS[thisRun]})
+            timing = pd.DataFrame({'TS': runTS[thisRun]})
             timing['second'] = np.floor(timing['TS'])
             x = timing.groupby('second')['second'].count()
             print('**********************************************************')
             print('**********************************************************')
             print('**********************************************************')
-            print('Run ' + str(thisRun+1) + ' Timing Diagnostics:')
+            print('Run ' + str(thisRun + 1) + ' Timing Diagnostics:')
             print('**********************************************************')
             print('Frequency: Frames Within Each Second')
             print(x.groupby(x).count())
@@ -376,7 +431,7 @@ if __name__ == "__main__":
             cv2.destroyAllWindows()
     if recVideo:
         #Save timestamp file:
-        np.savetxt(out_file_ts, runTS[0]+runTS[1], delimiter=',')
+        np.savetxt(out_file_ts, runTS[0] + runTS[1], delimiter=',')
     #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     #Clean up & shut  down
     #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
