@@ -437,5 +437,5 @@ if __name__ == "__main__":
     #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     win.close()
     raWin.close()
-    core.quit()
     print('Script Finished!')
+    core.quit()
