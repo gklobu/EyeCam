@@ -65,7 +65,7 @@ rec_frame_rate = 30
 # Key that ends experiment:
 quitKey = 'escape'
 # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
-filebase = _thisDir + os.sep + u'data/' + '_'.join([expName, expInfo['sessionID']])
+filebase = _thisDir + os.sep + u'data' + os.sep + '_'.join([expName, expInfo['sessionID']])
 # Video encoding:
 vidExt = '.mp4'
 # Timestamp Format
