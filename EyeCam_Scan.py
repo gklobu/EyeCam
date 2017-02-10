@@ -99,7 +99,7 @@ config = loadConfiguration('siteConfig.yaml')
 # Display Information
 display = pyglet.window.get_platform().get_default_display()
 screens = display.get_screens()
-if len(screens) < config['monitor']['screen']:
+if config['monitor']['screen'] >= len(screens):
     pScreen = 0
 else:
     pScreen = config['monitor']['screen']
