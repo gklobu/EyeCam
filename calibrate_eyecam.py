@@ -59,7 +59,7 @@ if os.path.exists(CONFIG_FILE):
         config = yaml.safe_load(f)
 else:
     copyMsg = ('Please copy configuration text file '
-               '"siteConfig.yaml.example" to "siteConfig.yaml" '
+               '"siteConfigEXAMPLE.yaml" to "siteConfig.yaml" '
                'and edit it with your trigger and buttons.')
     raise IOError(copyMsg)
 titleLetterSize = config['style']['titleLetterSize']  # 3

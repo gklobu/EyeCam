@@ -78,8 +78,7 @@ timestampFormat = '%a %b %d %H:%M:%S %Y'
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #save a log file for detail verbose info
 logFile = logging.LogFile(filebase + '.log', level=logging.EXP)
-logging.console.setLevel(logging.WARNING
-                         )  # this outputs to the screen, not a file
+logging.console.setLevel(logging.WARNING)  # this outputs to the screen, not a file
 
 endExpNow = False  # flag for 'escape' or other condition => quit the exp
 
