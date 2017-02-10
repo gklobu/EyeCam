@@ -34,6 +34,8 @@ import pyglet
 import sys
 import yaml
 
+
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #User input
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -145,7 +147,14 @@ if recVideo and useAperture:
     aperture = config['aperture']
 #Camera number (should be 1 for scanning if using computer w/ built-in camera (e.g., FaceTime on a Macbook);
 #use 0 if your computer does not have a built-in camera or if you are testing script w/ built-in camera:
-eye_cam = 1 if config['dualCam'] and not expInfo['test mode'] else 0
+if expInfo['test mode']:
+    eye_cam = 0
+else:
+    if config['dualCam'] =='yes' or config['dualCam'] ==1:
+        eye_cam = 1
+    else:
+        eye_cam = 0
+
 
 # Setup the participant Window
 win = visual.Window(size=resolution, fullscr=False, screen=pScreen, allowGUI=False, allowStencil=False,
@@ -283,7 +292,7 @@ def count_down(win):
 #Video writing function
 #To be run in parallel with data collection loop in main
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-def writeVid(update_queue, quit_flag, thisRun):
+def writeVid(update_queue, quit_flag, thisRun, filename):
     #CV2 does not like to run in two processes simultaneously:
     import imageio
     #Create video writer object:
@@ -335,6 +344,7 @@ if __name__ == "__main__":
         if recVideo:
             #Create video capture object to control camera/frame grabber:
             cap = cv2.VideoCapture(eye_cam)
+            logging.debug('opened video reader on camera %u' % eye_cam)
             cap.set(cv2.cv.CV_CAP_PROP_FPS, value=rec_frame_rate)
             #Read a frame, get dims:
             ret, frame = cap.read()
@@ -352,7 +362,6 @@ if __name__ == "__main__":
         trigger_ts, triggerWallTime = waitForTrigger()
 
         expInfo['triggerWallTime'] = triggerWallTime.strftime(timestampFormat)
-
         filename = filebase + '_'.join(['', 'run%s' % thisRun, expInfo['date']])
         #Time stamp file name:
         out_file_ts = filename + '_ts.csv'
@@ -373,7 +382,7 @@ if __name__ == "__main__":
             #Write file in another process:
             writeProc = Process(name='Write',
                                 target=writeVid,
-                                args=(update_queue, quit_flag, thisRun))
+                                args=(update_queue, quit_flag, thisRun, filename))
             writeProc.start()
             #Data collection loop:
             recText.draw(raWin)
