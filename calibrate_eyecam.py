@@ -144,11 +144,15 @@ def calibrate():
     #x, y dimensions of the frame:
     o_frame_dim = np.shape(np.array(frame))
     print(np.shape(frame))
-    #default aperture is 20% of screen (centered)
-    aperture = [int(o_frame_dim[0]//2 - o_frame_dim[0]*0.10),
-                int(o_frame_dim[0]//2 + o_frame_dim[0]*0.10),
-                int(o_frame_dim[1]//2 - o_frame_dim[1]*0.10),
-                int(o_frame_dim[1]//2 + o_frame_dim[1]*0.10)]
+    #if an aperture was already in siteConfig, use it
+    if 'aperture' in config:
+        aperture = closestLegalAperture(config['aperture'], o_frame_dim)
+    else:
+        #default aperture is 20% of screen (centered)
+        aperture = [int(o_frame_dim[0]//2 - o_frame_dim[0]*0.10),
+                    int(o_frame_dim[0]//2 + o_frame_dim[0]*0.10),
+                    int(o_frame_dim[1]//2 - o_frame_dim[1]*0.10),
+                    int(o_frame_dim[1]//2 + o_frame_dim[1]*0.10)]
     #key dict to move & resize aperture (by pixels):
     ap_map = {"up":[-SHIFT_COEFF,-SHIFT_COEFF,0,0],
                 "down": [SHIFT_COEFF,SHIFT_COEFF,0,0],
