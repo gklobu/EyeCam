@@ -124,7 +124,7 @@ if expInfo['scan type'] == 'mbPCASL':
 else:  # expInfo['scan type'] == 'REST'
     if age >= 8:
         nRuns = 2
-        runDuration = 400.4  # sec plus TR adjustmnet
+        runDuration = 390.4  # sec plus TR adjustmnet
     else:  #if 5-7yo
         nRuns = 3
         runDuration = 180
@@ -252,6 +252,7 @@ def waitForTrigger(clocks):
     # Returns: core timer and wall time of trigger
     trigger_ts = core.getTime()
     loopOver = False
+    event.getKeys() #clear any pre-existing keypresses before beginning to wait
     while not loopOver:
         inkeys = event.getKeys()
         if triggerKey in inkeys:
