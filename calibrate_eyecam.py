@@ -37,9 +37,9 @@ pMon = 'testMonitor'
 #Frame rate (for recording):
 rec_frame_rate = 30
 #Number of pixels by which to translate camera aperture:
-SHIFT_COEFF = 30
+SHIFT_COEFF = 5
 #Number of pixels (on each side) by which to grow or shrink camera aperture:
-SCALE_COEFF = 15
+SCALE_COEFF = 1
 #aperture transformations:
 AP_MAP = {"up":[-1,-1,0,0],
                 "down": [1,1,0,0],
