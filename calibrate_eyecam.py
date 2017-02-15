@@ -37,9 +37,9 @@ pMon = 'testMonitor'
 #Frame rate (for recording):
 rec_frame_rate = 30
 #Number of pixels by which to translate camera aperture:
-SHIFT_COEFF = 30
+SHIFT_COEFF = 5
 #Number of pixels (on each side) by which to grow or shrink camera aperture:
-SCALE_COEFF = 15
+SCALE_COEFF = 1
 #aperture transformations:
 AP_MAP = {"up":[-1,-1,0,0],
                 "down": [1,1,0,0],
@@ -101,13 +101,9 @@ def closestLegalAperture(aperture, vidSize):
     #if aperture is larger than vidSize, shrink it to the closest even size that fits
     if apSize[0] > vidSize[0]:
         amntOver = apSize[0] - vidSize[0]
-        print('aperture: ')
-        print(aperture)
-        print('over by %u' % amntOver)
         shrinkCoeff = amntOver / 2 + amntOver % 2 #if vidSize is odd for some reason, this should handle it
         aperture = [aperture[i] + shrinkCoeff * AP_MAP['s'][i] for i in range(len(aperture))] 
         apSize = ap2size(aperture)
-        print(aperture)
     if apSize[1] > vidSize[1]:
         amntOver = apSize[1] - vidSize[1]
         shrinkCoeff = amntOver / 2. + amntOver % 2
@@ -125,7 +121,7 @@ def closestLegalAperture(aperture, vidSize):
     if aperture[3] > vidSize[1] : #right
         aperture = [aperture[i] + (aperture[3]-vidSize[1]) * AP_MAP['left'][i] for i in range(len(aperture))]
 
-    #print(aperture)
+
     return aperture 
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -143,7 +139,6 @@ def calibrate():
     
     #x, y dimensions of the frame:
     o_frame_dim = np.shape(np.array(frame))
-    print(np.shape(frame))
     #if an aperture was already in siteConfig, use it
     if 'aperture' in config:
         aperture = closestLegalAperture(config['aperture'], o_frame_dim)
