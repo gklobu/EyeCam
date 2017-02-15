@@ -1,6 +1,6 @@
-aperture: [0, 390, 0, 422]
-dualCam: 'yes'
-monitor: {distance: 70, screen: 1, width: 28.5}
+aperture: [275, 445, 499, 781]
+dualCam: 0
+monitor: {distance: 107.25, screen: 1, width: 47}
 record: 'yes'
 style: {fixLetterSize: 2.5, subtitleLetterSize: 0.7, textLetterSize: 1, titleLetterSize: 3,
   verbalColor: '#3EB4F0', wrapWidth: 16}
