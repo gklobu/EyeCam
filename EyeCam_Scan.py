@@ -20,9 +20,7 @@ Tested with Psychopy 1.83.04 and 1.84.02
   Peirce, JW (2009) Generating stimuli for neuroscience using PsychoPy. Frontiers in Neuroinformatics, 2:10. doi: 10.3389/neuro.11.010.2008
 ***************************************************************************************************************
 """
-
 from ctypes import c_bool
-import cv2
 import datetime
 import itertools
 from multiprocessing import Process, Queue, Value
@@ -65,7 +63,7 @@ rec_frame_rate = 30
 # Key that ends experiment:
 quitKey = 'escape'
 # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
-filebase = _thisDir + os.sep + u'data/' + '_'.join([expName, expInfo['sessionID']])
+filebase = _thisDir + os.sep + u'data' + os.sep + '_'.join([expName, expInfo['sessionID']])
 # Video encoding:
 vidExt = '.mp4'
 # Timestamp Format
@@ -75,7 +73,7 @@ timestampFormat = '%a %b %d %H:%M:%S %Y'
 #Basic experiment setup
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #save a log file for detail verbose info
-logFile = logging.LogFile(filebase + '.log', level=logging.EXP)
+logFile = logging.LogFile(filebase + '_%s.log' % expInfo['date'], level=logging.INFO)
 logging.console.setLevel(logging.WARNING
                          )  # this outputs to the screen, not a file
 
@@ -122,14 +120,14 @@ except ValueError:
 # Set Run Number and Duration based on Age and Scan Type
 if expInfo['scan type'] == 'mbPCASL':
     nRuns = 1
-    runTime = 240  # sec
+    runDuration = 240  # sec
 else:  # expInfo['scan type'] == 'REST'
     if age >= 8:
         nRuns = 2
-        runTime = 400.4  # sec plus TR adjustmnet
-    else:  #if 5-7yo or 81+ yo
+        runDuration = 390.4  # sec plus TR adjustmnet
+    else:  #if 5-7yo
         nRuns = 3
-        runTime = 180
+        runDuration = 180
 
 # Set HCP Style Params
 triggerKey = config['trigger']  #5 at Harvard
@@ -139,13 +137,30 @@ fixLetterSize = config['style']['fixLetterSize']  # 2.5
 wrapWidth = config['style']['wrapWidth']  # 30
 subtitleLetterSize = config['style']['subtitleLetterSize']  # 1
 verbalColor = config['style']['verbalColor'] #  '#3EB4F0'
+
+# Eye-Tracking Params
 recVideo = config['record'] == 'yes'
 useAperture = config['use_aperture'] == 'yes'
-if recVideo and useAperture:
-    aperture = config['aperture']
-#Camera number (should be 1 for scanning if using computer w/ built-in camera (e.g., FaceTime on a Macbook);
-#use 0 if your computer does not have a built-in camera or if you are testing script w/ built-in camera:
-eye_cam = 1 if config['dualCam'] and not expInfo['test mode'] else 0
+
+if recVideo:
+    # Only import opencv if using video so the script is runnable w/o eyetracking setup
+    import cv2
+    if useAperture:
+        aperture = config['aperture']
+
+    #Camera number (should be 1 for scanning if using computer w/ built-in camera (e.g., FaceTime on a Macbook);
+    #use 0 if your computer does not have a built-in camera or if you are testing script w/ built-in camera:
+    if expInfo['test mode']:
+        eye_cam = 0
+    else:
+        if config['dualCam'] =='yes' or config['dualCam'] ==1:
+            eye_cam = 1
+        else:
+            eye_cam = 0
+
+# Log Settings
+logging.info(expInfo)
+logging.info('nRuns: %d, runDuration: %.02f' % (nRuns, runDuration))
 
 # Setup the participant Window
 win = visual.Window(size=resolution, fullscr=False, screen=pScreen, allowGUI=False, allowStencil=False,
@@ -225,27 +240,34 @@ def fixCross(win, cross):
     cross.draw(win)
     win.mouseVisible = False
     win.flip()
+    logging.info('Begin Fixation Cross')
 
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Wait for scanner trigger
 #Returns trigger timestamp
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-def waitForTrigger():
+def waitForTrigger(clocks):
+    # Inputs: Psychopy Clock to reset when trigger is received.
+    # Returns: core timer and wall time of trigger
     trigger_ts = core.getTime()
     loopOver = False
+    event.getKeys() #clear any pre-existing keypresses before beginning to wait
     while not loopOver:
         inkeys = event.getKeys()
         if triggerKey in inkeys:
             trigger_ts = core.getTime()  # time stamp for start of scan
             triggerWallTime = datetime.datetime.today()  # Wall Time timestamp
             loopOver = True
+            for clock in clocks:
+                clock.reset()  # Zero the countdown clock
         elif quitKey in inkeys:
             endExpNow = True
             core.quit()
             loopOver = True
-    
-    print('Trigger received at %s' % triggerWallTime.strftime(timestampFormat))
+    triggerMsg = 'Trigger received at %s' % triggerWallTime.strftime(timestampFormat)
+    print(triggerMsg)
+    logging.info(triggerMsg)
     return trigger_ts, triggerWallTime
 
 
@@ -257,7 +279,7 @@ def count_down(win):
     # Create images for Routine "countdown"
     counter = visual.TextStim(win=win,
                               ori=0,
-                              name='one',
+                              name='countdownText',
                               text='4',
                               font='Arial',
                               pos=[0, 0],
@@ -283,11 +305,10 @@ def count_down(win):
 #Video writing function
 #To be run in parallel with data collection loop in main
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-def writeVid(update_queue, quit_flag, thisRun):
+def writeVid(update_queue, quit_flag, thisRun, out_file):
     #CV2 does not like to run in two processes simultaneously:
     import imageio
     #Create video writer object:
-    out_file = filename + "_run" + str(thisRun + 1) + vidExt
     out = imageio.get_writer(out_file, fps=rec_frame_rate)
     while not quit_flag.value:
         #Keep popping and writing frames:
@@ -331,10 +352,14 @@ if __name__ == "__main__":
         depth=-1.0)
     runTS = [[]] * nRuns
     getOut = False
+    globalClock = core.Clock()
+    routineTimer = core.CountdownTimer()
     for thisRun in range(nRuns):
+        events = []
         if recVideo:
             #Create video capture object to control camera/frame grabber:
             cap = cv2.VideoCapture(eye_cam)
+            logging.debug('opened video reader on camera %u' % eye_cam)
             cap.set(cv2.cv.CV_CAP_PROP_FPS, value=rec_frame_rate)
             #Read a frame, get dims:
             ret, frame = cap.read()
@@ -349,20 +374,33 @@ if __name__ == "__main__":
         raWin.flip()
         raWin.winHandle.activate()
         #Wait for scanner trigger:
-        trigger_ts, triggerWallTime = waitForTrigger()
+        trigger_ts, triggerWallTime = waitForTrigger([globalClock, routineTimer])
 
+        # Start timing for the length of the scan
+        routineTimer.add(runDuration)
+        
         expInfo['triggerWallTime'] = triggerWallTime.strftime(timestampFormat)
-
-        filename = filebase + '_'.join(['', 'run%s' % thisRun, expInfo['date']])
-        #Time stamp file name:
-        out_file_ts = filename + '_ts.csv'
+        events.append({'condition': 'ScanStart', 
+                       'run': 'run%d' % (thisRun + 1), 
+                       'duration': 0,
+                       'onset': globalClock.getTime()})
+        filename = filebase + '_'.join(['', 'run%s' % (thisRun + 1), expInfo['date']])
 
         #Capture a timestamp for every frame (1st entry will be trigger):
         runTS[thisRun] += [trigger_ts]
         countText.draw(raWin)
         raWin.flip()
         if expInfo['scan type'] == 'REST':
+            events.append({'condition': 'Countdown', 
+                           'run': 'run%d' % (thisRun + 1), 
+                           'duration': 8,
+                           'onset': globalClock.getTime()})
             count_down(win)
+        events.append({'condition': 'FixStart', 
+                       'run': 'run%d' % (thisRun + 1), 
+                       'duration': 0,
+                       'onset': globalClock.getTime()})
+            
         fixCross(win, cross)
         if recVideo:
             #Queue of frames from cap; data collection loop adds frames, video writing process
@@ -373,7 +411,7 @@ if __name__ == "__main__":
             #Write file in another process:
             writeProc = Process(name='Write',
                                 target=writeVid,
-                                args=(update_queue, quit_flag, thisRun))
+                                args=(update_queue, quit_flag, thisRun, filename + vidExt))
             writeProc.start()
             #Data collection loop:
             recText.draw(raWin)
@@ -383,10 +421,7 @@ if __name__ == "__main__":
             norecText.draw(raWin)
             raWin.flip()
             raWin.winHandle.activate()
-        scanOver = False
-        while not scanOver and not endExpNow:
-            #Check to see if scan is over:
-            scanOver = (runTS[thisRun][-1] - trigger_ts) > runTime
+        while routineTimer.getTime() > 0 and not endExpNow:
             #collect time stamp for each image:
             runTS[thisRun] += [core.getTime()]
             if event.getKeys(quitKey):
@@ -406,6 +441,14 @@ if __name__ == "__main__":
                 else:
                     update_queue.put(frame)
                     cv2.imshow('RA View', frame)
+        runEndTime = datetime.datetime.today()
+        logging.info('Run %s finished: %s' % (thisRun + 1, runEndTime.strftime(timestampFormat)))
+        events.append({'condition': 'RunEnd',
+                       'duration': 0,
+                       'run': 'run%d' % (thisRun + 1),
+                       'onset': globalClock.getTime()})
+        run_df = pd.DataFrame(events)
+        run_df.to_csv(filename + '_design.csv')
         if recVideo:
             ioText.draw(raWin)
             raWin.flip()
@@ -429,13 +472,16 @@ if __name__ == "__main__":
             #Save timestamps:
             cap.release()
             cv2.destroyAllWindows()
-    if recVideo:
-        #Save timestamp file:
-        np.savetxt(out_file_ts, runTS[0] + runTS[1], delimiter=',')
+            
+            #Time stamp file name:
+            out_file_ts = filename + '_ts.csv'
+            #Save timestamp file:
+            np.savetxt(out_file_ts, runTS[thisRun], delimiter=',', fmt='%.04f')
+
     #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     #Clean up & shut  down
     #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     win.close()
     raWin.close()
-    core.quit()
     print('Script Finished!')
+    core.quit()
