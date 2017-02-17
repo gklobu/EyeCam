@@ -13,7 +13,7 @@ Works best with at least 8 GB of RAM and SSD hard drive (for faster video output
 Tested on a Macbook Pro (OS 10.11.6) and a Macbook Air (OS 10.12.2)
 Gian Klobusicky
 gklobusicky@fas.harvard.edu
-02/01/2017
+02/17/2017
 ***************************************************************************************************************
 Tested with Psychopy 1.83.04 and 1.84.02
   Peirce, JW (2007) PsychoPy - Psychophysics software in Python. Journal of Neuroscience Methods, 162(1-2), 8-13.
