@@ -198,7 +198,7 @@ def instruct():
                                    pos=[0,3], height=textLetterSize * .8, wrapWidth=30,
                                    color=verbalColor, colorSpace='rgb', opacity=1,
                                    depth=0.0, italic=True)
-                                
+
     outerFrame = visual.Rect(win=raWin, lineWidth=1, lineColor='white',
                              width=35, height=23, units='deg')
     #Update RA text (i.e., instructions):
@@ -250,6 +250,7 @@ def fixCross(win, cross):
 def waitForTrigger(clocks):
     # Inputs: Psychopy Clock to reset when trigger is received.
     # Returns: core timer and wall time of trigger
+    event.clearEvents() #Flush keys
     trigger_ts = core.getTime()
     loopOver = False
     event.getKeys() #clear any pre-existing keypresses before beginning to wait
@@ -378,10 +379,10 @@ if __name__ == "__main__":
 
         # Start timing for the length of the scan
         routineTimer.add(runDuration)
-        
+
         expInfo['triggerWallTime'] = triggerWallTime.strftime(timestampFormat)
-        events.append({'condition': 'ScanStart', 
-                       'run': 'run%d' % (thisRun + 1), 
+        events.append({'condition': 'ScanStart',
+                       'run': 'run%d' % (thisRun + 1),
                        'duration': 0,
                        'onset': globalClock.getTime()})
         filename = filebase + '_'.join(['', 'run%s' % (thisRun + 1), expInfo['date']])
@@ -391,16 +392,16 @@ if __name__ == "__main__":
         countText.draw(raWin)
         raWin.flip()
         if expInfo['scan type'] == 'REST':
-            events.append({'condition': 'Countdown', 
-                           'run': 'run%d' % (thisRun + 1), 
+            events.append({'condition': 'Countdown',
+                           'run': 'run%d' % (thisRun + 1),
                            'duration': 8,
                            'onset': globalClock.getTime()})
             count_down(win)
-        events.append({'condition': 'FixStart', 
-                       'run': 'run%d' % (thisRun + 1), 
+        events.append({'condition': 'FixStart',
+                       'run': 'run%d' % (thisRun + 1),
                        'duration': 0,
                        'onset': globalClock.getTime()})
-            
+
         fixCross(win, cross)
         if recVideo:
             #Queue of frames from cap; data collection loop adds frames, video writing process
@@ -472,7 +473,7 @@ if __name__ == "__main__":
             #Save timestamps:
             cap.release()
             cv2.destroyAllWindows()
-            
+
             #Time stamp file name:
             out_file_ts = filename + '_ts.csv'
             #Save timestamp file:
