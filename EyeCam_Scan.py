@@ -161,6 +161,7 @@ if recVideo:
 # Log Settings
 logging.info(expInfo)
 logging.info('nRuns: %d, runDuration: %.02f' % (nRuns, runDuration))
+logging.info(vid_frame_rate)
 
 # Setup the participant Window
 win = visual.Window(size=resolution, fullscr=False, screen=pScreen, allowGUI=False, allowStencil=False,
@@ -468,7 +469,9 @@ if __name__ == "__main__":
             print('Run ' + str(thisRun + 1) + ' Timing Diagnostics:')
             print('**********************************************************')
             print('Frequency: Frames Within Each Second')
-            print(x.groupby(x).count())
+            out_dist = x.groupby(x).count()
+            print(out_dist)
+            out_dist.to_csv(filebase + 'EyeCamFPS_Dist.csv')
             print('**********************************************************')
             #Save timestamps:
             cap.release()
