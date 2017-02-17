@@ -59,7 +59,7 @@ os.chdir(_thisDir)
 # RA's screen (for eye video monitor; 0=primary, 1=secondary and should usually be 0):
 raScreen = 0
 # Frame rate (for recording):
-rec_frame_rate = 30
+vid_frame_rate = 30
 # Key that ends experiment:
 quitKey = 'escape'
 # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
@@ -310,7 +310,7 @@ def writeVid(update_queue, quit_flag, thisRun, out_file):
     #CV2 does not like to run in two processes simultaneously:
     import imageio
     #Create video writer object:
-    out = imageio.get_writer(out_file, fps=rec_frame_rate)
+    out = imageio.get_writer(out_file, fps=vid_frame_rate)
     while not quit_flag.value:
         #Keep popping and writing frames:
         out.append_data(update_queue.get())
@@ -361,7 +361,7 @@ if __name__ == "__main__":
             #Create video capture object to control camera/frame grabber:
             cap = cv2.VideoCapture(eye_cam)
             logging.debug('opened video reader on camera %u' % eye_cam)
-            cap.set(cv2.cv.CV_CAP_PROP_FPS, value=rec_frame_rate)
+            cap.set(cv2.cv.CV_CAP_PROP_FPS, value=vid_frame_rate)
             #Read a frame, get dims:
             ret, frame = cap.read()
             if useAperture:
