@@ -1,5 +1,7 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 """
-
+Part of the Human Connectome - Lifespan Project Task fMRI Battery
 ***************************************************************************************************************
 Script to display fixation cross to participant while recording eye video via frame grabber
 or webcam (tested with Epiphan DVI2USB 3.0)
@@ -10,10 +12,11 @@ For use during resting state and ASL scans for the Lifespan Human Connectome Pro
 Requires 2 CPU cores
 Works best with at least 8 GB of RAM and SSD hard drive (for faster video output)
 ***************************************************************************************************************
+
 Tested on a Macbook Pro (OS 10.11.6) and a Macbook Air (OS 10.12.2)
-Gian Klobusicky
+Gian Klobusicky, Leah H Somerville
 gklobusicky@fas.harvard.edu
-02/17/2017
+02/20/2017
 ***************************************************************************************************************
 Tested with Psychopy 1.83.04 and 1.84.02
   Peirce, JW (2007) PsychoPy - Psychophysics software in Python. Journal of Neuroscience Methods, 162(1-2), 8-13.
@@ -86,10 +89,9 @@ def loadConfiguration(configFile):
         with open(configFile) as f:
             config = yaml.safe_load(f)
     else:
-        copyMsg = ('Please copy configuration text file '
-                   '"%s.example" to "%s" '
-                   'and edit it with your trigger and buttons.' % 2 *
-                   [os.path.basename(configFile)])
+        copyMsg = ('Please copy configuration text file ' +
+                   '"%s.example" to "%s" ' % tuple([os.path.basename(configFile)] * 2) +
+                   'and edit it with your trigger and buttons.')
         raise IOError(copyMsg)
     return config
 
@@ -99,7 +101,7 @@ config = loadConfiguration('siteConfig.yaml')
 # Display Information
 display = pyglet.window.get_platform().get_default_display()
 screens = display.get_screens()
-if len(screens) < config['monitor']['screen']:
+if config['monitor']['screen'] >= len(screens):
     pScreen = 0
 else:
     pScreen = config['monitor']['screen']
@@ -191,37 +193,56 @@ def instruct():
     #Create text object to hold instructions:
     raText = visual.TextStim(win=raWin, ori=0, name='raText',
                              text='', font='Arial',
-                             pos=[0, -3], height=textLetterSize*.8, wrapWidth=30,
+                             pos=[0, -4.5], height=textLetterSize, wrapWidth=30,
                              color='white', colorSpace='rgb', opacity=1,
                              depth=0.0)
     raVerbalText = visual.TextStim(win=raWin, ori=0, name='raVerbalText',
                                    text='', font='Arial',
-                                   pos=[0,3], height=textLetterSize * .8, wrapWidth=30,
+                                   pos=[0,3], height=1.5, wrapWidth=30,
                                    color=verbalColor, colorSpace='rgb', opacity=1,
                                    depth=0.0, italic=True)
 
     outerFrame = visual.Rect(win=raWin, lineWidth=1, lineColor='white',
                              width=35, height=23, units='deg')
-    #Update RA text (i.e., instructions):
-    raVerbalText.text = ('"In the next scan all you are going to see is a white plus sign in the middle '
-                         'of the screen. Your job is to simply rest, keep your eyes open, and look at the '
-                         'plus sign during the entire scan. You can blink normally, and you do not have '
-                         'to think about anything in particular. However, it is very important that you do '
-                         'not fall asleep, and as always, that you stay very still from beginning to '
-                         'end. \n\nDoes that make sense? Do you have any questions? Are you ready to begin?"')
+    
+    #Update RA text (i.e., instructions read to participant over intercom):
+    verbal1Msg = (
+        '"In the next scan all you are going to see is a white plus sign '
+        'in the middle of the screen. Your job is to simply rest, keep '
+        'your eyes open, and look at the plus sign during the entire '
+        'scan. You can blink normally, and you do not have to think about '
+        'anything in particular.')
+    
+    verbal2Msg = (
+        'However, it is very important that you do not fall asleep, '
+        'and as always, that you stay very still from beginning to end.'
+        '\n\nDoes that make sense? Do you have any questions? Are you '
+        'ready to begin?"')
+
+    raVerbalText.text = verbal1Msg
     raText.text = 'Press <space> to continue.'
     raVerbalText.draw()
     raText.draw()
     raWin.flip()
     raWin.winHandle.activate()
     loopOver = False
+    npresses = 0
     while not loopOver:
         inkeys = event.getKeys()
-        if quitKey in inkeys:
+        if 'space' in inkeys:
+            npresses += 1
+            if npresses == 1:
+                raVerbalText.text = verbal2Msg
+                raText.text = 'Press <space> to continue.'
+                raVerbalText.draw()
+                raText.draw()
+                raWin.flip()
+            else:  # Second <space> press
+                loopOver = True
+                raText.pos = [0, 0]
+        elif quitKey in inkeys:
             endExpNow = True
             core.quit()
-            loopOver = True
-        elif 'space' in inkeys:
             loopOver = True
     return raWin
 
