@@ -15,7 +15,12 @@ for task in REST mbPCASL; do
   cd $task
   #cp siteConfig.yaml.example siteConfig.yaml
   mv EyeCam_Scan.py ${task}_Scan.py
-  sed -i '' "s/\[\'SELECT SCAN TYPE\', \'REST\', \'mbPCASL\'\]/\[\'${task}\', \'REST\', \'mbPCASL\'\]/" ${task}_Scan.py
+  if [ "$task" = REST ]; then
+    select="\[\'REST\', \'mbPCASL\'\]"
+  else
+    select="\[\'mbPCASL\', \'REST\'\]"
+  fi
+  sed -i '' "s/\[\'SELECT SCAN TYPE\', \'REST\', \'mbPCASL\'\]/$select/" ${task}_Scan.py
 
   # if [ "${task}" = "mbPCASL" ]; then
   #   sed -i '' "s/['SELECT SCAN TYPE', 'REST', 'mbPCASL']/['${task}', 'REST', 'mbPCASL']/"
