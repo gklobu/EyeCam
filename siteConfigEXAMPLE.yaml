@@ -1,0 +1,8 @@
+aperture: [0, 640, 0, 480]
+dualCam: 'no'
+monitor: {distance: 70, screen: 1, width: 28.5}
+record: 'no'
+style: {fixLetterSize: 2.5, subtitleLetterSize: 0.7, textLetterSize: 1, titleLetterSize: 3,
+  verbalColor: '#3EB4F0', wrapWidth: 16}
+trigger: '7'
+use_aperture: 'yes'

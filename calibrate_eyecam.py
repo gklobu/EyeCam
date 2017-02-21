@@ -16,11 +16,17 @@ gklobusicky@fas.harvard.edu
 from psychopy import core, visual, event, gui
 import cv2
 import numpy as np
+import math
 import os
 import sys
+import yaml
+import itertools
+
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Params
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
 # Ensure that relative paths start from the same directory as this script
 _thisDir = os.path.dirname(os.path.abspath(__file__)).decode(sys.getfilesystemencoding())
 os.chdir(_thisDir)
@@ -28,36 +34,96 @@ os.chdir(_thisDir)
 raScreen = 0
 #Monitor calibration (for participant's screen):
 pMon = 'testMonitor'
-#Camera number (because some laptops have built-in cameras):
-eye_cam = 1
 #Frame rate (for recording):
 rec_frame_rate = 30
 #Number of pixels by which to translate camera aperture:
-shift = 5
+SHIFT_COEFF = 5
+#Number of pixels (on each side) by which to grow or shrink camera aperture:
+SCALE_COEFF = 1
+#aperture transformations:
+AP_MAP = {"up":[-1,-1,0,0],
+                "down": [1,1,0,0],
+                "left": [0,0,-1,-1],
+                "right":[0,0,1,1],
+                "b":[-1,1,-1,1], #bigger
+                "s":[1,-1,1,-1]} #smaller
+#Location of configuration file:
+CONFIG_FILE = 'siteConfig.yaml'
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Read params
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-import yaml
-import itertools
-
-if os.path.exists('siteConfig.yaml'):
-    with open('siteConfig.yaml') as f:
+#load configuration file
+if os.path.exists(CONFIG_FILE):
+    with open(CONFIG_FILE) as f:
         config = yaml.safe_load(f)
 else:
     copyMsg = ('Please copy configuration text file '
-               '"siteConfig.yaml.example" to "siteConfig.yaml" '
+               '"siteConfigEXAMPLE.yaml" to "siteConfig.yaml" '
                'and edit it with your trigger and buttons.')
     raise IOError(copyMsg)
 titleLetterSize = config['style']['titleLetterSize']  # 3
 textLetterSize = config['style']['textLetterSize']  # 1.5
 wrapWidth = config['style']['wrapWidth']  # 30
 subtitleLetterSize = config['style']['subtitleLetterSize']  # 1
+#Camera number (because some laptops have built-in cameras):
+if config['dualCam'] == 'yes' or config['dualCam'] == 1:
+    eye_cam = 1
+else:
+    eye_cam = 0
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Image cropping function
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def reFrame(fr, aperture):
     return fr[aperture[0]:aperture[1], aperture[2]:aperture[3], :]
+
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#Aperture fixing function
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+def closestLegalAperture(aperture, vidSize):
+    ''' return the closest aperture which is of even width and height and fully within vidSize.
+    aperture format is [top bottom left right], vidSize format is [height width]'''
+    
+    def ap2size(ap):
+        size = [ap[1] - ap[0], ap[3] - ap[2]]
+        return size
+    apSize = ap2size(aperture)
+
+    #if height and/or width are odd, expand them by one pixel to make them even
+    if apSize[0] % 2 != 0:
+        aperture[1] += 1
+        apSize = ap2size(aperture)
+    if apSize[1] % 2 != 0:
+        aperture[3] += 1
+        apSize = ap2size(aperture)
+        
+    #if aperture is larger than vidSize, shrink it to the closest even size that fits
+    if apSize[0] > vidSize[0]:
+        amntOver = apSize[0] - vidSize[0]
+        shrinkCoeff = amntOver / 2 + amntOver % 2 #if vidSize is odd for some reason, this should handle it
+        aperture = [aperture[i] + shrinkCoeff * AP_MAP['s'][i] for i in range(len(aperture))] 
+        apSize = ap2size(aperture)
+    if apSize[1] > vidSize[1]:
+        amntOver = apSize[1] - vidSize[1]
+        shrinkCoeff = amntOver / 2. + amntOver % 2
+        aperture = [aperture[i] + shrinkCoeff * AP_MAP['s'][i] for i in range(len(aperture))]
+        apSize = ap2size(aperture)
+
+    #if the aperture extends off the screen, bring it back on
+    if aperture[0] < 0: #top
+        #aperture = np.add(aperture, np.multiply(-aperture[0], AP_MAP['down']))
+        aperture = [aperture[i] - (aperture[0] * AP_MAP['down'][i]) for i in range(len(aperture))]
+    if aperture[2] < 0: #left
+        aperture = [aperture[i] - aperture[2] * AP_MAP['right'][i] for i in range(len(aperture))]
+    if aperture[1] > vidSize[0] : #bottom
+        aperture = [aperture[i] + (aperture[1]-vidSize[0]) * AP_MAP['up'][i] for i in range(len(aperture))]
+    if aperture[3] > vidSize[1] : #right
+        aperture = [aperture[i] + (aperture[3]-vidSize[1]) * AP_MAP['left'][i] for i in range(len(aperture))]
+
+
+    return aperture 
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Aperture calibration function
 #Returns aperture
@@ -70,20 +136,25 @@ def calibrate():
     cap = cv2.VideoCapture(eye_cam) 
     #Read a frame:
     ret, frame = cap.read()
+    
     #x, y dimensions of the frame:
     o_frame_dim = np.shape(np.array(frame))
-    #default aperture is 20% of screen (centered)
-    aperture = [int(o_frame_dim[0]//2 - o_frame_dim[0]*0.10),
-                int(o_frame_dim[0]//2 + o_frame_dim[0]*0.10),
-                int(o_frame_dim[1]//2 - o_frame_dim[1]*0.10),
-                int(o_frame_dim[1]//2 + o_frame_dim[1]*0.10)]
+    #if an aperture was already in siteConfig, use it
+    if 'aperture' in config:
+        aperture = closestLegalAperture(config['aperture'], o_frame_dim)
+    else:
+        #default aperture is 20% of screen (centered)
+        aperture = [int(o_frame_dim[0]//2 - o_frame_dim[0]*0.10),
+                    int(o_frame_dim[0]//2 + o_frame_dim[0]*0.10),
+                    int(o_frame_dim[1]//2 - o_frame_dim[1]*0.10),
+                    int(o_frame_dim[1]//2 + o_frame_dim[1]*0.10)]
     #key dict to move & resize aperture (by pixels):
-    ap_map = {"up":[-shift,-shift,0,0],
-                "down": [shift,shift,0,0],
-                "left": [0,0,-shift,-shift],
-                "right":[0,0,shift,shift],
-                "b":[-1,1,-1,1], #bigger
-                "s":[1,-1,1,-1]} #smaller
+    ap_map = {"up":[-SHIFT_COEFF,-SHIFT_COEFF,0,0],
+                "down": [SHIFT_COEFF,SHIFT_COEFF,0,0],
+                "left": [0,0,-SHIFT_COEFF,-SHIFT_COEFF],
+                "right":[0,0,SHIFT_COEFF,SHIFT_COEFF],
+                "b":[-SCALE_COEFF,SCALE_COEFF,-SCALE_COEFF,SCALE_COEFF], #bigger
+                "s":[SCALE_COEFF,-SCALE_COEFF,SCALE_COEFF,-SCALE_COEFF]} #smaller
     #To make sure aperture stays within the screen's limits
     def checkAp(ap):
         return np.all([i>0 for i in ap]) and ap[1]<=o_frame_dim[0] and ap[3]<=o_frame_dim[1]
@@ -97,13 +168,13 @@ def calibrate():
         if ret:
             cv2.imshow("Aperture", frame)
         #Check for keypress:
-        key = event.getKeys(ap_map.keys()+["q"])
+        key = event.getKeys(AP_MAP.keys()+["q"])
         if len(key)==1:
             if key[0]=="q":
                 done=True
             else:
                 newapp = [aperture[i]+ap_map[key[0]][i] for i in range(len(aperture))]
-                aperture = newapp if checkAp(newapp) else aperture
+                aperture = closestLegalAperture(newapp, o_frame_dim)
     #Shut down cv2 objects:
     cap.release()
     cv2.destroyAllWindows()
@@ -130,7 +201,7 @@ if __name__ == "__main__":
     config['aperture'] = calibrate()
     print('Aperture:')
     print(config['aperture'])
-    with open('siteConfig.yaml', 'w') as f:
+    with open(CONFIG_FILE, 'w') as f:
         config = yaml.dump(config, f)
     #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     #Clean up & shut  down
