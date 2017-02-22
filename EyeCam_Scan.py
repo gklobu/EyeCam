@@ -25,12 +25,11 @@ Tested with Psychopy 1.83.04 and 1.84.02
 """
 from ctypes import c_bool
 import datetime
-import itertools
 from multiprocessing import Process, Queue, Value
 import numpy as np
 import os
 import pandas as pd
-from psychopy import locale_setup, visual, core, data, event, logging, sound, gui, monitors
+from psychopy import visual, core, event, logging, gui, monitors
 import pyglet
 import sys
 import yaml
@@ -67,6 +66,8 @@ vid_frame_rate = 30
 quitKey = 'escape'
 # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
 filebase = _thisDir + os.sep + u'data' + os.sep + '_'.join([expName, expInfo['sessionID']])
+if not os.path.isdir(os.path.dirname(filebase)):
+    os.makedirs(os.path.dirname(filebase))
 # Video encoding:
 vidExt = '.mp4'
 # Timestamp Format
@@ -204,7 +205,7 @@ def instruct():
 
     outerFrame = visual.Rect(win=raWin, lineWidth=1, lineColor='white',
                              width=35, height=23, units='deg')
-    
+
     #Update RA text (i.e., instructions read to participant over intercom):
     verbal1Msg = (
         '"In the next scan all you are going to see is a white plus sign '
@@ -212,7 +213,7 @@ def instruct():
         'your eyes open, and look at the plus sign during the entire '
         'scan. You can blink normally, and you do not have to think about '
         'anything in particular.')
-    
+
     verbal2Msg = (
         'However, it is very important that you do not fall asleep, '
         'and as always, that you stay very still from beginning to end.'
