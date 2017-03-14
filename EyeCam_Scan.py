@@ -465,7 +465,7 @@ if __name__ == "__main__":
         #Initialize the cv2 Window (so we can re-focus back to psychopy)
         cv2.namedWindow('RA View', cv2.WINDOW_AUTOSIZE)
         raWin.flip()
-        raWin.winHandle.activate()
+        win.winHandle.activate()
         while routineTimer.getTime() > 0 and not endExpNow:
             #collect time stamp for each image:
             runTS[thisRun] += [core.getTime()]
