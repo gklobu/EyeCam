@@ -124,7 +124,7 @@ except ValueError:
 # Set Run Number and Duration based on Age and Scan Type
 if expInfo['scan type'] == 'mbPCASL':
     nRuns = 1
-    runDuration = 240  # sec
+    runDuration = 322.2  # sec
 else:  # expInfo['scan type'] == 'REST'
     if age >= 8:
         nRuns = 2
@@ -393,7 +393,7 @@ if __name__ == "__main__":
         color='white', colorSpace='rgb', opacity=1,
         depth=-1.0)
     version = gitVersion()
-    logging.exp('Git Version: %s' % version)
+    logging.exp('git-revision: %s' % version)
     runTS = [[]] * nRuns
     getOut = False
     globalClock = core.Clock()
