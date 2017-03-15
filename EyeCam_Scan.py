@@ -31,6 +31,7 @@ import os
 import pandas as pd
 from psychopy import visual, core, event, logging, gui, monitors
 import pyglet
+from subprocess import check_output
 import sys
 import yaml
 
@@ -123,7 +124,7 @@ except ValueError:
 # Set Run Number and Duration based on Age and Scan Type
 if expInfo['scan type'] == 'mbPCASL':
     nRuns = 1
-    runDuration = 240  # sec
+    runDuration = 322.2  # sec
 else:  # expInfo['scan type'] == 'REST'
     if age >= 8:
         nRuns = 2
@@ -164,7 +165,7 @@ if recVideo:
 # Log Settings
 logging.info(expInfo)
 logging.info('nRuns: %d, runDuration: %.02f' % (nRuns, runDuration))
-logging.info(vid_frame_rate)
+logging.info('Recording frame rate: %d' % vid_frame_rate)
 
 # Setup the participant Window
 win = visual.Window(size=resolution, fullscr=False, screen=pScreen, allowGUI=False, allowStencil=False,
@@ -204,7 +205,7 @@ def instruct():
                                    depth=0.0, italic=True)
 
     outerFrame = visual.Rect(win=raWin, lineWidth=1, lineColor='white',
-                             width=35, height=23, units='deg')
+                             width=35, height=23, units='deg', name='outerFrame')
 
     #Update RA text (i.e., instructions read to participant over intercom):
     verbal1Msg = (
@@ -340,6 +341,23 @@ def writeVid(update_queue, quit_flag, thisRun, out_file):
     #Finishes file IO when quit_flag is flipped to True:
     out.close()
 
+
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#Get Task version from VERSION file or git
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+def gitVersion():
+    try:
+        revision = check_output(['git', 'rev-parse', '--short', 'HEAD'])
+        revision = revision.strip()
+    except:
+        if os.path.exists('VERSION'):
+            with open('VERSION', 'r') as f:
+                revision = f.read().strip()
+        else:
+            revision = ''
+    return revision
+
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Main experiment:
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -374,6 +392,8 @@ if __name__ == "__main__":
         pos=[0, 0], height=titleLetterSize, wrapWidth=30,
         color='white', colorSpace='rgb', opacity=1,
         depth=-1.0)
+    version = gitVersion()
+    logging.exp('git-revision: %s' % version)
     runTS = [[]] * nRuns
     getOut = False
     globalClock = core.Clock()
@@ -439,19 +459,21 @@ if __name__ == "__main__":
             writeProc.start()
             #Data collection loop:
             recText.draw(raWin)
-            raWin.flip()
-            raWin.winHandle.activate()
         else:
             norecText.draw(raWin)
-            raWin.flip()
-            raWin.winHandle.activate()
+
+        #Initialize the cv2 Window (so we can re-focus back to psychopy)
+        cv2.namedWindow('RA View', cv2.WINDOW_AUTOSIZE)
+        raWin.flip()
+        win.winHandle.activate()
         while routineTimer.getTime() > 0 and not endExpNow:
             #collect time stamp for each image:
             runTS[thisRun] += [core.getTime()]
             if event.getKeys(quitKey):
                 scanOver = True
-                writeProc.terminate()
-                cap.release()
+                if recVideo:
+                    writeProc.terminate()
+                    cap.release()
                 core.quit()
                 cv2.destroyAllWindows()
                 endExpNow = True
