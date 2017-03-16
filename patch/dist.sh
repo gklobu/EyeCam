@@ -25,6 +25,9 @@ for task in REST mbPCASL; do
   # if [ "${task}" = "mbPCASL" ]; then
   #   sed -i '' "s/['SELECT SCAN TYPE', 'REST', 'mbPCASL']/['${task}', 'REST', 'mbPCASL']/"
   # fi
+  if [ ! -e siteConfig.yaml ]; then
+    cp siteConfig.yaml.example siteConfig.yaml
+  fi
   git rev-parse HEAD > VERSION
   shortHash=$(git rev-parse --short HEAD)
   cd ..
