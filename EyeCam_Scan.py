@@ -463,8 +463,9 @@ if __name__ == "__main__":
             norecText.draw(raWin)
 
         #Initialize the cv2 Window (so we can re-focus back to psychopy)
-        cv2.namedWindow('RA View', cv2.WINDOW_AUTOSIZE)
-        raWin.flip()
+        if recVideo:
+            cv2.namedWindow('RA View', cv2.WINDOW_AUTOSIZE)
+            raWin.flip()
         win.winHandle.activate()
         while routineTimer.getTime() > 0 and not endExpNow:
             #collect time stamp for each image:
@@ -474,8 +475,8 @@ if __name__ == "__main__":
                 if recVideo:
                     writeProc.terminate()
                     cap.release()
+                    cv2.destroyAllWindows()
                 core.quit()
-                cv2.destroyAllWindows()
                 endExpNow = True
                 break
             if recVideo:
