@@ -324,14 +324,14 @@ def scanInit():
     # Set Run Number and Duration based on Age and Scan Type
     if expInfo['scan type'] == 'mbPCASL':
         nRuns = 1
-        runDuration = 322.2  # sec
+        runDuration = 325.2  # sec
     else:  # expInfo['scan type'] == 'REST'
         if age >= 8:
             nRuns = 2
-            runDuration = 390.4  # sec plus TR adjustmnet
+            runDuration = 393.4  # sec plus TR adjustmnet
         else:  #if 5-7yo
             nRuns = 3
-            runDuration = 180
+            runDuration = 183
 
     # Eye-Tracking Params
     recVideo = config['record'] == 'yes'
