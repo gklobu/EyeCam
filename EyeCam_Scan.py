@@ -34,24 +34,9 @@ import pyglet
 from subprocess import check_output
 import sys
 import yaml
+import cv2 #try to import with others
 
-#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-#User input
-#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-expInfo = {'scan type': ['SELECT SCAN TYPE', 'REST', 'mbPCASL'],
-           'age': u'',
-           'sessionID': u'',
-           'runNumber': '1',
-           'test mode': False}
-dlg = gui.DlgFromDict(dictionary=expInfo, title='Eye Cam')
-if dlg.OK == False: core.quit()  # user pressed cancel
-expInfo['date'] = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')
-if expInfo['scan type'] == 'SELECT SCAN TYPE':
-    raise ValueError('CHOOSE A SCAN TYPE!!!')
-else:
-    expName = expInfo['scan type']
 
-expInfo['expName'] = expName
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Params
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -65,10 +50,6 @@ raScreen = 0
 vid_frame_rate = 30
 # Key that ends experiment:
 quitKey = 'escape'
-# Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
-filebase = _thisDir + os.sep + u'data' + os.sep + '_'.join([expName, expInfo['sessionID']])
-if not os.path.isdir(os.path.dirname(filebase)):
-    os.makedirs(os.path.dirname(filebase))
 # Video encoding:
 vidExt = '.mp4'
 # Timestamp Format
@@ -77,10 +58,7 @@ timestampFormat = '%a %b %d %H:%M:%S %Y'
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Basic experiment setup
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-#save a log file for detail verbose info
-logFile = logging.LogFile(filebase + '_%s.log' % expInfo['date'], level=logging.INFO)
-logging.console.setLevel(logging.WARNING
-                         )  # this outputs to the screen, not a file
+
 
 endExpNow = False  # flag for 'escape' or other condition => quit the exp
 
@@ -116,23 +94,6 @@ mon.setWidth(config['monitor']['width'])
 mon.setDistance(config['monitor']['distance'])
 mon.setSizePix(resolution)
 
-try:
-    age = float(expInfo['age'])
-except ValueError:
-    raise ValueError("Please enter age in years")
-
-# Set Run Number and Duration based on Age and Scan Type
-if expInfo['scan type'] == 'mbPCASL':
-    nRuns = 1
-    runDuration = 322.2  # sec
-else:  # expInfo['scan type'] == 'REST'
-    if age >= 8:
-        nRuns = 2
-        runDuration = 390.4  # sec plus TR adjustmnet
-    else:  #if 5-7yo
-        nRuns = 3
-        runDuration = 180
-
 # Set HCP Style Params
 triggerKey = config['trigger']  #5 at Harvard
 titleLetterSize = config['style']['titleLetterSize']  # 3
@@ -142,45 +103,12 @@ wrapWidth = config['style']['wrapWidth']  # 30
 subtitleLetterSize = config['style']['subtitleLetterSize']  # 1
 verbalColor = config['style']['verbalColor'] #  '#3EB4F0'
 
-# Eye-Tracking Params
-recVideo = config['record'] == 'yes'
-useAperture = config['use_aperture'] == 'yes'
 
-if recVideo:
-    # Only import opencv if using video so the script is runnable w/o eyetracking setup
-    import cv2
-    if useAperture:
-        aperture = config['aperture']
 
-    #Camera number (should be 1 for scanning if using computer w/ built-in camera (e.g., FaceTime on a Macbook);
-    #use 0 if your computer does not have a built-in camera or if you are testing script w/ built-in camera:
-    if expInfo['test mode']:
-        eye_cam = 0
-    else:
-        if config['dualCam'] =='yes' or config['dualCam'] ==1:
-            eye_cam = 1
-        else:
-            eye_cam = 0
-
-# Log Settings
-logging.info(expInfo)
-logging.info('nRuns: %d, runDuration: %.02f' % (nRuns, runDuration))
-logging.info('Recording frame rate: %d' % vid_frame_rate)
-
-# Setup the participant Window
-win = visual.Window(size=resolution, fullscr=False, screen=pScreen, allowGUI=False, allowStencil=False,
-                    monitor=mon, color=[-1,-1,-1], colorSpace='rgb',
-                    blendMode='avg', useFBO=True, units='deg')
-#Create fixation cross object:
-cross = visual.TextStim(win=win, ori=0, name='cross',
-                        text='+',    font='Arial',
-                        pos=[0, 0], height=fixLetterSize, wrapWidth=None,
-                        color='white', colorSpace='rgb', opacity=1,
-                        depth=-1.0)
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Instruction screen function
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-def instruct():
+def instruct(expName):
     # Setup the RA Experimenter Window
     raWin = visual.Window(size=[1100,675], fullscr=False, allowGUI=True, allowStencil=False,
                           monitor=u'testMonitor', color=u'black', colorSpace='rgb',
@@ -357,15 +285,99 @@ def gitVersion():
             revision = ''
     return revision
 
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#User input #def scan initialize
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+def scanInit():
+    expInfo = {'scan type': ['SELECT SCAN TYPE', 'REST', 'mbPCASL'],
+            'age': u'',
+            'sessionID': u'',
+            'runNumber': '1',
+            'test mode': False}
+    dlg = gui.DlgFromDict(dictionary=expInfo, title='Eye Cam')
+    if dlg.OK == False: core.quit()  # user pressed cancel
+    expInfo['date'] = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')
+    if expInfo['scan type'] == 'SELECT SCAN TYPE':
+        raise ValueError('CHOOSE A SCAN TYPE!!!')
+    else:
+        expName = expInfo['scan type']
+
+    expInfo['expName'] = expName
+
+    # Data file name stem = absolute path + name; later add .psyexp, .csv, .log, etc
+    filebase = _thisDir + os.sep + u'data' + os.sep + '_'.join([expName, expInfo['sessionID']])
+    if not os.path.isdir(os.path.dirname(filebase)):
+        os.makedirs(os.path.dirname(filebase))
+
+    #save a log file for detail verbose info
+    #put in initializer
+    logFile = logging.LogFile(filebase + '_%s.log' % expInfo['date'], level=logging.INFO)
+    logging.console.setLevel(logging.WARNING
+                         )  # this outputs to the screen, not a file
+
+    #put with initializer
+    try:
+        age = float(expInfo['age'])
+    except ValueError:
+        raise ValueError("Please enter age in years")
+
+    # Set Run Number and Duration based on Age and Scan Type
+    if expInfo['scan type'] == 'mbPCASL':
+        nRuns = 1
+        runDuration = 325.2  # sec
+    else:  # expInfo['scan type'] == 'REST'
+        if age >= 8:
+            nRuns = 2
+            runDuration = 393.4  # sec plus TR adjustmnet
+        else:  #if 5-7yo
+            nRuns = 3
+            runDuration = 183
+
+    # Eye-Tracking Params
+    recVideo = config['record'] == 'yes'
+    useAperture = config['use_aperture'] == 'yes'
+
+    if recVideo:
+        # Only import opencv if using video so the script is runnable w/o eyetracking setup
+        if useAperture:
+            aperture = config['aperture']
+
+        #Camera number (should be 1 for scanning if using computer w/ built-in camera (e.g., FaceTime on a Macbook);
+        #use 0 if your computer does not have a built-in camera or if you are testing script w/ built-in camera:
+        if expInfo['test mode']:
+            eyeCam = 0
+        else:
+            if config['dualCam'] =='yes' or config['dualCam'] ==1:
+                eyeCam = 1
+            else:
+                eyeCam = 0
+    else: 
+        eyeCam, aperture = 0, None
+
+    return expInfo, logFile, expName, nRuns, recVideo, eyeCam, useAperture, aperture, runDuration, filebase
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Main experiment:
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 if __name__ == "__main__":
+    #User information
+    expInfo, logFile, expName, nRuns, recVideo, eyeCam, useAperture, aperture, runDuration, filebase = scanInit()
+
+    # Setup the participant Window
+    # put inside name=main
+    win = visual.Window(size=resolution, fullscr=False, screen=pScreen, allowGUI=False, allowStencil=False,
+                        monitor=mon, color=[-1,-1,-1], colorSpace='rgb',
+                        blendMode='avg', useFBO=True, units='deg')
+    #Create fixation cross object:
+    cross = visual.TextStim(win=win, ori=0, name='cross',
+                            text='+',    font='Arial',
+                            pos=[0, 0], height=fixLetterSize, wrapWidth=None,
+                            color='white', colorSpace='rgb', opacity=1,
+                            depth=-1.0)
     #Display fixation:
     fixCross(win, cross)
     #Display RA instructions:
-    raWin = instruct()
+    raWin = instruct(expInfo['scan type'])
     #Create other instructions:
     waitText = visual.TextStim(win=raWin, ori=0, name='introText',
         text='Waiting for trigger...', font='Arial',
@@ -394,7 +406,7 @@ if __name__ == "__main__":
         depth=-1.0)
     version = gitVersion()
     logging.exp('git-revision: %s' % version)
-    runTS = [[]] * nRuns
+    runTS = []
     getOut = False
     globalClock = core.Clock()
     routineTimer = core.CountdownTimer()
@@ -402,9 +414,12 @@ if __name__ == "__main__":
         events = []
         if recVideo:
             #Create video capture object to control camera/frame grabber:
-            cap = cv2.VideoCapture(eye_cam)
-            logging.debug('opened video reader on camera %u' % eye_cam)
-            cap.set(cv2.cv.CV_CAP_PROP_FPS, value=vid_frame_rate)
+            cap = cv2.VideoCapture(eyeCam)
+            logging.debug('opened video reader on camera %u' % eyeCam)
+            try:
+                cap.set(cv2.cv.CV_CAP_PROP_FPS, value=vid_frame_rate)
+            except StandardError:
+                cap.set(cv2.CAP_PROP_FPS, value=vid_frame_rate)
             #Read a frame, get dims:
             ret, frame = cap.read()
             if useAperture:
@@ -414,7 +429,7 @@ if __name__ == "__main__":
                 w = np.shape(frame)[1]
                 h = np.shape(frame)[0]
         #Indicate script is waiting for trigger:
-        waitText.draw(raWin)
+        waitText.draw()
         raWin.flip()
         raWin.winHandle.activate()
         #Wait for scanner trigger:
@@ -431,14 +446,14 @@ if __name__ == "__main__":
         filename = filebase + '_'.join(['', 'run%s' % (thisRun + 1), expInfo['date']])
 
         #Capture a timestamp for every frame (1st entry will be trigger):
-        runTS[thisRun] += [trigger_ts]
-        countText.draw(raWin)
-        raWin.flip()
+        runTS.append([trigger_ts])  # Start a new list for this run's timestamps
         if expInfo['scan type'] == 'REST':
             events.append({'condition': 'Countdown',
                            'run': 'run%d' % (thisRun + 1),
                            'duration': 8,
                            'onset': globalClock.getTime()})
+            countText.draw(raWin)
+            raWin.flip()
             count_down(win)
         events.append({'condition': 'FixStart',
                        'run': 'run%d' % (thisRun + 1),
@@ -459,13 +474,15 @@ if __name__ == "__main__":
             writeProc.start()
             #Data collection loop:
             recText.draw(raWin)
+            raWin.flip()
         else:
             norecText.draw(raWin)
+            raWin.flip()
 
         #Initialize the cv2 Window (so we can re-focus back to psychopy)
         if recVideo:
             cv2.namedWindow('RA View', cv2.WINDOW_AUTOSIZE)
-            raWin.flip()
+        
         win.winHandle.activate()
         while routineTimer.getTime() > 0 and not endExpNow:
             #collect time stamp for each image:
@@ -496,6 +513,7 @@ if __name__ == "__main__":
                        'onset': globalClock.getTime()})
         run_df = pd.DataFrame(events)
         run_df.to_csv(filename + '_design.csv')
+        run_df['git-revision'] = version
         if recVideo:
             ioText.draw(raWin)
             raWin.flip()
@@ -526,6 +544,12 @@ if __name__ == "__main__":
             out_file_ts = filename + '_ts.csv'
             #Save timestamp file:
             np.savetxt(out_file_ts, runTS[thisRun], delimiter=',', fmt='%.04f')
+
+    # Log Settings
+    # put inside name=main
+    logging.info(expInfo)
+    logging.info('nRuns: %d, runDuration: %.02f' % (nRuns, runDuration))
+    logging.info('Recording frame rate: %d' % vid_frame_rate)
 
     #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     #Clean up & shut  down
