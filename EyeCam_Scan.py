@@ -513,6 +513,7 @@ if __name__ == "__main__":
                        'onset': globalClock.getTime()})
         run_df = pd.DataFrame(events)
         run_df.to_csv(filename + '_design.csv')
+        run_df['git-revision'] = version
         if recVideo:
             ioText.draw(raWin)
             raWin.flip()
