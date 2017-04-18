@@ -289,7 +289,7 @@ def gitVersion():
 #User input #def scan initialize
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def scanInit():
-    expInfo = {'scan type': ['REST', 'mbPCASL'],
+    expInfo = {'scan type': ['SELECT SCAN TYPE', 'REST', 'mbPCASL'],
             'age': u'',
             'sessionID': u'',
             'runNumber': '1',
