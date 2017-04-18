@@ -28,6 +28,7 @@ for taskscript in REST mbPCASL; do
   shortHash=$(git rev-parse --short HEAD)
 done
 rm EyeCam_Scan.py
+rm siteConfigUMN.yaml
 cd ..
 
 date=`date +%Y-%m-%d`

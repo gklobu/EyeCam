@@ -328,10 +328,10 @@ def scanInit():
     else:  # expInfo['scan type'] == 'REST'
         if age >= 8:
             nRuns = 2
-            runDuration = 393.4  # sec plus TR adjustmnet
+            runDuration = 390.4  # sec plus TR adjustmnet
         else:  #if 5-7yo
             nRuns = 3
-            runDuration = 183
+            runDuration = 180
 
     # Eye-Tracking Params
     recVideo = config['record'] == 'yes'
@@ -351,7 +351,7 @@ def scanInit():
                 eyeCam = 1
             else:
                 eyeCam = 0
-    else: 
+    else:
         eyeCam, aperture = 0, None
 
     return expInfo, logFile, expName, nRuns, recVideo, eyeCam, useAperture, aperture, runDuration, filebase
@@ -482,7 +482,7 @@ if __name__ == "__main__":
         #Initialize the cv2 Window (so we can re-focus back to psychopy)
         if recVideo:
             cv2.namedWindow('RA View', cv2.WINDOW_AUTOSIZE)
-        
+
         win.winHandle.activate()
         while routineTimer.getTime() > 0 and not endExpNow:
             #collect time stamp for each image:
