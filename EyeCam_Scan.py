@@ -198,7 +198,7 @@ def fixCross(win, cross):
 #Wait for scanner trigger
 #Returns trigger timestamp
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-def waitForTrigger(clocks):
+def waitForTrigger(clocks, recorder):
     # Inputs: Psychopy Clock to reset when trigger is received.
     # Returns: core timer and wall time of trigger
     event.clearEvents() #Flush keys
@@ -213,6 +213,8 @@ def waitForTrigger(clocks):
                 clock.reset()  # Zero the countdown clock
         elif quitKey in inkeys:
             endExpNow = True
+            if recorder:
+                recorder.close()
             core.quit()
             loopOver = True
     triggerMsg = 'Trigger received at %s' % triggerWallTime.strftime(timestampFormat)
@@ -372,6 +374,7 @@ class Recorder(object):
         self.update_queue = None
         self.timestamps = []
         self._cap = None
+        self._closed = False
 
     @property
     def cap(self):
@@ -399,6 +402,7 @@ class Recorder(object):
             h = np.shape(frame)[0]
         self.w = w
         self.h = h
+        self._closed = False
 
     @cap.deleter
     def cap(self):
@@ -465,16 +469,16 @@ class Recorder(object):
     #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
     def close(self):
         '''Close everything, including the multiprocessing queue, frame writer, and opencv framegrabber'''
-        self.quit_flag = True
-        del(self.cap)
-        try:
+        if not self._closed:
+            self.quit_flag = True
+            del(self.cap)
             self.update_queue.close()
             del(self.update_queue)
             self.update_queue = None
-        except AttributeError:
-            pass  # Already Closed
-        self.writeProc.terminate()
-
+            self.writeProc.terminate()
+            cv2.destroyAllWindows()
+        self._closed = True
+    
 
 def write_ts_hist(ts_arr, out_file, thisRun):
     '''Calculate, display and save histogram of timestamps'''
@@ -559,7 +563,7 @@ if __name__ == "__main__":
         raWin.winHandle.activate()
 
         # Wait for scanner trigger; zero clocks at trigger time:
-        trigger_ts, triggerWallTime = waitForTrigger([globalClock, routineTimer])
+        trigger_ts, triggerWallTime = waitForTrigger([globalClock, routineTimer], recorder)
 
         # Start timing for the length of the scan
         routineTimer.add(runDuration)
@@ -604,6 +608,7 @@ if __name__ == "__main__":
                 endExpNow = True
                 if recorder:
                     recorder.close()
+                core.quit()
                 break
             if recorder:
                 # Record a frame and timestamp
