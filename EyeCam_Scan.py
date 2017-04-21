@@ -402,8 +402,11 @@ class Recorder(object):
 
     @cap.deleter
     def cap(self):
-        self._cap.release()
-        del(self._cap)
+        try:
+            self._cap.release()
+            del(self._cap)
+        except AttributeError:
+            pass  # Cap is already released / deleted
         cv2.destroyAllWindows()
 
     #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -464,9 +467,12 @@ class Recorder(object):
         '''Close everything, including the multiprocessing queue, frame writer, and opencv framegrabber'''
         self.quit_flag = True
         del(self.cap)
-        self.update_queue.close()
-        del(self.update_queue)
-        self.update_queue = None
+        try:
+            self.update_queue.close()
+            del(self.update_queue)
+            self.update_queue = None
+        except AttributeError:
+            pass  # Already Closed
         self.writeProc.terminate()
 
 
