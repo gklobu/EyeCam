@@ -431,9 +431,12 @@ if __name__ == "__main__":
         #Indicate script is waiting for trigger:
         waitText.draw()
         raWin.flip()
-        raWin.winHandle.activate()
-        #Wait for scanner trigger:
-        trigger_ts, triggerWallTime = waitForTrigger([globalClock, routineTimer])
+
+        # Bring Participant Window to the front
+        win.winHandle.activate()
+
+        # Wait for scanner trigger; zero clocks at trigger time:
+        trigger_ts, triggerWallTime = waitForTrigger([globalClock, routineTimer], recorder)
 
         # Start timing for the length of the scan
         routineTimer.add(runDuration)
@@ -483,6 +486,7 @@ if __name__ == "__main__":
         if recVideo:
             cv2.namedWindow('RA View', cv2.WINDOW_AUTOSIZE)
 
+        # Bring Participant Window to the front
         win.winHandle.activate()
         while routineTimer.getTime() > 0 and not endExpNow:
             #collect time stamp for each image:
