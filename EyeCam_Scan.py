@@ -560,16 +560,15 @@ if __name__ == "__main__":
         # Indicate script is waiting for trigger:
         waitText.draw()
         raWin.flip()
-        raWin.winHandle.activate()
+        
+        # Bring Participant Window to the front
+        win.winHandle.activate()
 
         # Wait for scanner trigger; zero clocks at trigger time:
         trigger_ts, triggerWallTime = waitForTrigger([globalClock, routineTimer], recorder)
 
         # Start timing for the length of the scan
         routineTimer.add(runDuration)
-
-        win.winHandle.activate()
-        raWin.winHandle.activate()
 
         expInfo['triggerWallTime'] = triggerWallTime.strftime(timestampFormat)
         events.append({'condition': 'ScanStart',
@@ -601,6 +600,9 @@ if __name__ == "__main__":
         recText.text = msg
         recText.draw(raWin)
         raWin.flip()
+
+        # Bring Participant Window to the front
+        win.winHandle.activate()
 
         while routineTimer.getTime() > 0 and not endExpNow:
             if event.getKeys(quitKey):
