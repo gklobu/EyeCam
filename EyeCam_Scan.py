@@ -34,7 +34,7 @@ import pyglet
 from subprocess import check_output
 import sys
 import yaml
-import cv2  # try to import with others
+import cv2 #try to import with others
 
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -110,7 +110,7 @@ verbalColor = config['style']['verbalColor'] #  '#3EB4F0'
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def instruct(expName):
     # Setup the RA Experimenter Window
-    raWin = visual.Window(size=[1100, 675], fullscr=False, allowGUI=True, allowStencil=False,
+    raWin = visual.Window(size=[1100,675], fullscr=False, allowGUI=True, allowStencil=False,
                           monitor=u'testMonitor', color=u'black', colorSpace='rgb',
                           blendMode='avg', useFBO=True,
                           units='deg',
@@ -128,7 +128,7 @@ def instruct(expName):
                              depth=0.0)
     raVerbalText = visual.TextStim(win=raWin, ori=0, name='raVerbalText',
                                    text='', font='Arial',
-                                   pos=[0, 3], height=1.5, wrapWidth=30,
+                                   pos=[0,3], height=1.5, wrapWidth=30,
                                    color=verbalColor, colorSpace='rgb', opacity=1,
                                    depth=0.0, italic=True)
 
@@ -185,6 +185,7 @@ def reFrame(fr, aperture):
 
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Present fixation, leave it up until script ends
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def fixCross(win, cross):
@@ -202,7 +203,9 @@ def waitForTrigger(clocks):
     # Inputs: Psychopy Clock to reset when trigger is received.
     # Returns: core timer and wall time of trigger
     event.clearEvents() #Flush keys
+    trigger_ts = core.getTime()
     loopOver = False
+    event.getKeys() #clear any pre-existing keypresses before beginning to wait
     while not loopOver:
         inkeys = event.getKeys()
         if triggerKey in inkeys:
@@ -221,10 +224,11 @@ def waitForTrigger(clocks):
     return trigger_ts, triggerWallTime
 
 
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-#Countdown 4,3,2,1 every 2 seconds at start of REST
+#Countdown (for consistency w/ other scripts)
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-def count_down(win, recorder, record_countdown=False):
+def count_down(win):
     # Create images for Routine "countdown"
     counter = visual.TextStim(win=win,
                               ori=0,
@@ -243,14 +247,27 @@ def count_down(win, recorder, record_countdown=False):
         counter.draw(win)
         win.flip()
         flip_time = core.getTime()
+        win.mouseVisible = False
         while core.getTime() - flip_time < 2:
-            if record_countdown:
-                recorder.cap_frame(globalClock)
             if event.getKeys(quitKey):
-                if recorder:
-                    recorder.close()
                 core.quit()
                 break
+
+
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+#Video writing function
+#To be run in parallel with data collection loop in main
+#::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+def writeVid(update_queue, quit_flag, thisRun, out_file):
+    #CV2 does not like to run in two processes simultaneously:
+    import imageio
+    #Create video writer object:
+    out = imageio.get_writer(out_file, fps=vid_frame_rate)
+    while not quit_flag.value:
+        #Keep popping and writing frames:
+        out.append_data(update_queue.get())
+    #Finishes file IO when quit_flag is flipped to True:
+    out.close()
 
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -321,6 +338,10 @@ def scanInit():
     useAperture = config['use_aperture'] == 'yes'
 
     if recVideo:
+        # Only import opencv if using video so the script is runnable w/o eyetracking setup
+        if useAperture:
+            aperture = config['aperture']
+
         #Camera number (should be 1 for scanning if using computer w/ built-in camera (e.g., FaceTime on a Macbook);
         #use 0 if your computer does not have a built-in camera or if you are testing script w/ built-in camera:
         if expInfo['test mode']:
@@ -330,174 +351,17 @@ def scanInit():
                 eyeCam = 1
             else:
                 eyeCam = 0
-
-        # Initialize a recorder to handle frame grabber and timestamps
-        recorder = Recorder(eyeCam)
-        if useAperture:
-            recorder.aperture = config['aperture']
     else:
-        recorder = None
+        eyeCam, aperture = 0, None
 
-    if 'record_countdown' in config.keys():
-        record_countdown = config['record_countdown'] == 'yes'
-    else:
-        record_countdown = False
-
-    return expInfo, logFile, expName, nRuns, recorder, runDuration, filebase, record_countdown
-
-
-class Recorder(object):
-    '''The Recorder maintains state for recording from the EyeCam, including the opencv framegrabber (cap)
-       and the `multiprocessing` Queue and writing process, as well as deleter functions to cleanly close
-       everything up.
-       
-       Initialization:
-        
-        * eyeCam (int): Camera to use for tracking (0-indexed, according to available cameras on the system).
-        
-       Usage:
-        * Call open_cap() and start_queue() to open a framegrabber and close() to end.
-        
-       Attributes:
-        * cap (opencv.VideoCapture): Opencv framegrabber (opened on initialization)
-        * timestamps (list): List of timestamps tied to video frames
-        * vid_frame_rate (int): Target frame rate to acquire video
-        * update_queue (multiprocessing.Queue): Queue to use for asynchronous writing of movie frames
-        * writeProc (multiprocessing.Process): Function to use for asynchronous writing of movie frames
-       '''
-    def __init__(self, eyeCam=0, aperture=None, vid_frame_rate=30):
-        self.eyeCam = eyeCam
-        self.aperture = aperture
-        self.vid_frame_rate = vid_frame_rate
-        self.update_queue = None
-        self.timestamps = []
-        self._cap = None
-
-    @property
-    def cap(self):
-        return self._cap
-
-    #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    #Create opencv framegrabber
-    #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    def open_cap(self):
-        # Create video capture object to control camera/frame grabber:
-        cap = cv2.VideoCapture(self.eyeCam)
-        self._cap = cap
-        logging.debug('opened video reader on camera %u' % self.eyeCam)
-        try:
-            cap.set(cv2.cv.CV_CAP_PROP_FPS, value=vid_frame_rate)
-        except StandardError:
-            cap.set(cv2.CAP_PROP_FPS, value=self.vid_frame_rate)
-        # Read a frame, get dims:
-        ret, frame = cap.read()
-        if self.aperture:
-            w = np.shape(reFrame(frame, self.aperture))[1]
-            h = np.shape(reFrame(frame, self.aperture))[0]
-        else:
-            w = np.shape(frame)[1]
-            h = np.shape(frame)[0]
-        self.w = w
-        self.h = h
-
-    @cap.deleter
-    def cap(self):
-        try:
-            self._cap.release()
-            del(self._cap)
-        except AttributeError:
-            pass  # Cap is already released / deleted
-        cv2.destroyAllWindows()
-
-    #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    #Open frame grabber queue and writing process
-    #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    def start_queue(self, out_file):
-        # Queue of frames from cap; data collection loop adds frames, video writing process
-        # pops frames (FIFO):
-        if not self.update_queue:
-            self.update_queue = Queue()
-
-        # Flag to tell parallel process when to exit loop
-        self.quit_flag = Value(c_bool, False)
-
-        # Write file in another process:
-        self.writeProc = Process(name='Write',
-                                 target=self.writeVid,
-                                 args=(out_file,))
-        self.writeProc.start()
-
-        # Initialize the cv2 Window (so we can re-focus back to psychopy)
-        cv2.namedWindow('RA View', cv2.WINDOW_AUTOSIZE)
-
-    #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    #Capture a single frame, and record image and timestamp
-    #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    def cap_frame(self, clock):
-        # read a frame, queue it, and display it:
-        ret, _frame = self._cap.read()
-        self.timestamps.append(clock.getTime())
-        if self.aperture:
-            frame = reFrame(_frame, self.aperture)
-        else:
-            frame = _frame
-
-        self.update_queue.put(frame)
-        cv2.imshow('RA View', frame)
-
-    #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    #Video writing function
-    #To be run in parallel with data collection loop in main
-    #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    def writeVid(self, out_file):
-        # CV2 does not like to run in two processes simultaneously:
-        import imageio
-        # Create video writer object:
-        out = imageio.get_writer(out_file, fps=self.vid_frame_rate)
-        while not self.quit_flag.value:
-            # Keep popping and writing frames:
-            out.append_data(self.update_queue.get())
-        # Finishes file IO when quit_flag is flipped to True:
-        out.close()
-
-    #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    #Cleanup Everything in recorder
-    #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-    def close(self):
-        '''Close everything, including the multiprocessing queue, frame writer, and opencv framegrabber'''
-        self.quit_flag = True
-        del(self.cap)
-        try:
-            self.update_queue.close()
-            del(self.update_queue)
-            self.update_queue = None
-        except AttributeError:
-            pass  # Already Closed
-        self.writeProc.terminate()
-
-
-def write_ts_hist(ts_arr, out_file, thisRun):
-    '''Calculate, display and save histogram of timestamps'''
-    timing = pd.DataFrame({'TS': ts_arr})
-    timing['second'] = np.floor(timing['TS'])
-    x = timing.groupby('second')['second'].count()
-    out_dist = x.groupby(x).count()
-    print('**********************************************************')
-    print('**********************************************************')
-    print('**********************************************************')
-    print('Run ' + str(thisRun + 1) + ' Timing Diagnostics:')
-    print('**********************************************************')
-    print('Frequency: Frames Within Each Second')
-    print(out_dist)
-    print('**********************************************************')
-    out_dist.to_csv(out_file)
+    return expInfo, logFile, expName, nRuns, recVideo, eyeCam, useAperture, aperture, runDuration, filebase
 
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Main experiment:
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 if __name__ == "__main__":
     #User information
-    expInfo, logFile, expName, nRuns, recorder, runDuration, filebase, record_countdown = scanInit()
+    expInfo, logFile, expName, nRuns, recVideo, eyeCam, useAperture, aperture, runDuration, filebase = scanInit()
 
     # Setup the participant Window
     # put inside name=main
@@ -535,44 +399,54 @@ if __name__ == "__main__":
         pos=[0, 0], height=titleLetterSize, wrapWidth=30,
         color='white', colorSpace='rgb', opacity=1,
         depth=-1.0)
+    norecText = visual.TextStim(win=raWin, ori=0, name='norecText',
+        text='Scan in progress...', font='Arial',
+        pos=[0, 0], height=titleLetterSize, wrapWidth=30,
+        color='white', colorSpace='rgb', opacity=1,
+        depth=-1.0)
     version = gitVersion()
     logging.exp('git-revision: %s' % version)
+    runTS = []
     getOut = False
     globalClock = core.Clock()
     routineTimer = core.CountdownTimer()
     for thisRun in range(nRuns):
-        # Initialize logs for thisRun
         events = []
-        filename = filebase + '_'.join(['', 'run%s' % (thisRun + 1), expInfo['date']])
-
-
-        # Open Video Capture
-        if recorder:
-            vid_out = out_file = filename + vidExt
-            recorder.open_cap()
-            recorder.start_queue(vid_out)
-            recorder.timestamps = []  # Init a new list of timestamps for this run
-
-        # Indicate script is waiting for trigger:
+        if recVideo:
+            #Create video capture object to control camera/frame grabber:
+            cap = cv2.VideoCapture(eyeCam)
+            logging.debug('opened video reader on camera %u' % eyeCam)
+            try:
+                cap.set(cv2.cv.CV_CAP_PROP_FPS, value=vid_frame_rate)
+            except StandardError:
+                cap.set(cv2.CAP_PROP_FPS, value=vid_frame_rate)
+            #Read a frame, get dims:
+            ret, frame = cap.read()
+            if useAperture:
+                w = np.shape(reFrame(frame, aperture))[1]
+                h = np.shape(reFrame(frame, aperture))[0]
+            else:
+                w = np.shape(frame)[1]
+                h = np.shape(frame)[0]
+        #Indicate script is waiting for trigger:
         waitText.draw()
         raWin.flip()
         raWin.winHandle.activate()
-
-        # Wait for scanner trigger; zero clocks at trigger time:
+        #Wait for scanner trigger:
         trigger_ts, triggerWallTime = waitForTrigger([globalClock, routineTimer])
 
         # Start timing for the length of the scan
         routineTimer.add(runDuration)
-
-        win.winHandle.activate()
-        raWin.winHandle.activate()
 
         expInfo['triggerWallTime'] = triggerWallTime.strftime(timestampFormat)
         events.append({'condition': 'ScanStart',
                        'run': 'run%d' % (thisRun + 1),
                        'duration': 0,
                        'onset': globalClock.getTime()})
+        filename = filebase + '_'.join(['', 'run%s' % (thisRun + 1), expInfo['date']])
 
+        #Capture a timestamp for every frame (1st entry will be trigger):
+        runTS.append([trigger_ts])  # Start a new list for this run's timestamps
         if expInfo['scan type'] == 'REST':
             events.append({'condition': 'Countdown',
                            'run': 'run%d' % (thisRun + 1),
@@ -580,34 +454,57 @@ if __name__ == "__main__":
                            'onset': globalClock.getTime()})
             countText.draw(raWin)
             raWin.flip()
-            win.mouseVisible = False
-            count_down(win, recorder, record_countdown)
-
+            count_down(win)
         events.append({'condition': 'FixStart',
                        'run': 'run%d' % (thisRun + 1),
                        'duration': 0,
                        'onset': globalClock.getTime()})
 
-        # Draw Fixation cross on participant screen
         fixCross(win, cross)
-        if recorder:
-            msg = 'Recording...'
+        if recVideo:
+            #Queue of frames from cap; data collection loop adds frames, video writing process
+            #pops frames (FIFO):
+            update_queue = Queue()
+            #Flag to tell parallel process when to exit loop
+            quit_flag = Value(c_bool, False)
+            #Write file in another process:
+            writeProc = Process(name='Write',
+                                target=writeVid,
+                                args=(update_queue, quit_flag, thisRun, filename + vidExt))
+            writeProc.start()
+            #Data collection loop:
+            recText.draw(raWin)
+            raWin.flip()
         else:
-            msg = 'Scan in progress...'
-        recText.text = msg
-        recText.draw(raWin)
-        raWin.flip()
+            norecText.draw(raWin)
+            raWin.flip()
 
+        #Initialize the cv2 Window (so we can re-focus back to psychopy)
+        if recVideo:
+            cv2.namedWindow('RA View', cv2.WINDOW_AUTOSIZE)
+
+        win.winHandle.activate()
         while routineTimer.getTime() > 0 and not endExpNow:
+            #collect time stamp for each image:
+            runTS[thisRun] += [core.getTime()]
             if event.getKeys(quitKey):
                 scanOver = True
+                if recVideo:
+                    writeProc.terminate()
+                    cap.release()
+                    cv2.destroyAllWindows()
+                core.quit()
                 endExpNow = True
-                if recorder:
-                    recorder.close()
                 break
-            if recorder:
-                # Record a frame and timestamp
-                recorder.cap_frame(globalClock)
+            if recVideo:
+                #read a frame, queue it, and display it:
+                ret, frame = cap.read()
+                if useAperture:
+                    update_queue.put(reFrame(frame, aperture))
+                    cv2.imshow('RA View', reFrame(frame, aperture))
+                else:
+                    update_queue.put(frame)
+                    cv2.imshow('RA View', frame)
         runEndTime = datetime.datetime.today()
         logging.info('Run %s finished: %s' % (thisRun + 1, runEndTime.strftime(timestampFormat)))
         events.append({'condition': 'RunEnd',
@@ -617,22 +514,36 @@ if __name__ == "__main__":
         run_df = pd.DataFrame(events)
         run_df.to_csv(filename + '_design.csv')
         run_df['git-revision'] = version
-        if recorder:
+        if recVideo:
             ioText.draw(raWin)
             raWin.flip()
             raWin.winHandle.activate()
-            # Flip quit_flag to True when done:
-            recorder.close()
-
-            # Get some timing stats, print some, save the rest to .csv:
-            write_ts_hist(recorder.timestamps,
-                          filename + '_EyeCamFPS_Dist.csv',
-                          thisRun)
+            #Flip quit_flag to True when done:
+            quit_flag.value = True
+            #End writing proca:
+            writeProc.terminate()
+            #Get some timing stats, print some, save the rest to .csv:
+            timing = pd.DataFrame({'TS': runTS[thisRun]})
+            timing['second'] = np.floor(timing['TS'])
+            x = timing.groupby('second')['second'].count()
+            print('**********************************************************')
+            print('**********************************************************')
+            print('**********************************************************')
+            print('Run ' + str(thisRun + 1) + ' Timing Diagnostics:')
+            print('**********************************************************')
+            print('Frequency: Frames Within Each Second')
+            out_dist = x.groupby(x).count()
+            print(out_dist)
+            out_dist.to_csv(filebase + 'EyeCamFPS_Dist.csv')
+            print('**********************************************************')
+            #Save timestamps:
+            cap.release()
+            cv2.destroyAllWindows()
 
             #Time stamp file name:
             out_file_ts = filename + '_ts.csv'
             #Save timestamp file:
-            np.savetxt(out_file_ts, recorder.timestamps, delimiter=',', fmt='%.04f')
+            np.savetxt(out_file_ts, runTS[thisRun], delimiter=',', fmt='%.04f')
 
     # Log Settings
     # put inside name=main
