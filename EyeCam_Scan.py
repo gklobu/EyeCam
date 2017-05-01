@@ -228,8 +228,11 @@ def waitForTrigger(clocks):
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Countdown (for consistency w/ other scripts)
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-def count_down(win):
+def count_down(win, cap=None, aperture=None, timestamps=None, clock=None):
     # Create images for Routine "countdown"
+    # To record images during the countdown, provide the cv VideoCapture instance, an aperture 
+    # (or None) to reframe the recorded image, a list of timestamps to append times to, and a 
+    # psychopy Clock to read times from.
     counter = visual.TextStim(win=win,
                               ori=0,
                               name='countdownText',
@@ -249,6 +252,9 @@ def count_down(win):
         flip_time = core.getTime()
         win.mouseVisible = False
         while core.getTime() - flip_time < 2:
+            if cap:
+                recFrame(cap, aperture=aperture)
+                timestamps.append(clock.getTime())
             if event.getKeys(quitKey):
                 core.quit()
                 break
@@ -356,6 +362,17 @@ def scanInit():
 
     return expInfo, logFile, expName, nRuns, recVideo, eyeCam, useAperture, aperture, runDuration, filebase
 
+def recFrame(cap, aperture=None):
+    #read a frame from the cv device `cap`, queue it to write, and display it:
+    ret, frame = cap.read()
+    if aperture:
+        update_queue.put(reFrame(frame, aperture))
+        cv2.imshow('RA View', reFrame(frame, aperture))
+    else:
+        update_queue.put(frame)
+        cv2.imshow('RA View', frame)
+
+
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Main experiment:
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -428,15 +445,37 @@ if __name__ == "__main__":
             else:
                 w = np.shape(frame)[1]
                 h = np.shape(frame)[0]
+        else:
+            cap = None
         #Indicate script is waiting for trigger:
         waitText.draw()
         raWin.flip()
+        
+        if recVideo:
+            #Queue of frames from cap; data collection loop adds frames, video writing process
+            #pops frames (FIFO):
+            update_queue = Queue()
+            #Flag to tell parallel process when to exit loop
+            quit_flag = Value(c_bool, False)
+            
+            # Output Video Filename
+            filename = filebase + '_'.join(['', 'run%s' % (thisRun + 1), expInfo['date']])
+
+            #Write file in another process:
+            writeProc = Process(name='Write',
+                                target=writeVid,
+                                args=(update_queue, quit_flag, thisRun, filename + vidExt))
+            writeProc.start()
+            
+            #Initialize the cv2 Window (so we can re-focus back to psychopy)
+            cv2.namedWindow('RA View', cv2.WINDOW_AUTOSIZE)
+
 
         # Bring Participant Window to the front
         win.winHandle.activate()
 
         # Wait for scanner trigger; zero clocks at trigger time:
-        trigger_ts, triggerWallTime = waitForTrigger([globalClock, routineTimer], recorder)
+        trigger_ts, triggerWallTime = waitForTrigger([globalClock, routineTimer])
 
         # Start timing for the length of the scan
         routineTimer.add(runDuration)
@@ -446,10 +485,9 @@ if __name__ == "__main__":
                        'run': 'run%d' % (thisRun + 1),
                        'duration': 0,
                        'onset': globalClock.getTime()})
-        filename = filebase + '_'.join(['', 'run%s' % (thisRun + 1), expInfo['date']])
 
         #Capture a timestamp for every frame (1st entry will be trigger):
-        runTS.append([trigger_ts])  # Start a new list for this run's timestamps
+        runTS.append([])  # Start a new list for this run's timestamps
         if expInfo['scan type'] == 'REST':
             events.append({'condition': 'Countdown',
                            'run': 'run%d' % (thisRun + 1),
@@ -457,7 +495,7 @@ if __name__ == "__main__":
                            'onset': globalClock.getTime()})
             countText.draw(raWin)
             raWin.flip()
-            count_down(win)
+            count_down(win, cap=cap, aperture=aperture, timestamps=runTS[thisRun], clock=globalClock)
         events.append({'condition': 'FixStart',
                        'run': 'run%d' % (thisRun + 1),
                        'duration': 0,
@@ -465,16 +503,6 @@ if __name__ == "__main__":
 
         fixCross(win, cross)
         if recVideo:
-            #Queue of frames from cap; data collection loop adds frames, video writing process
-            #pops frames (FIFO):
-            update_queue = Queue()
-            #Flag to tell parallel process when to exit loop
-            quit_flag = Value(c_bool, False)
-            #Write file in another process:
-            writeProc = Process(name='Write',
-                                target=writeVid,
-                                args=(update_queue, quit_flag, thisRun, filename + vidExt))
-            writeProc.start()
             #Data collection loop:
             recText.draw(raWin)
             raWin.flip()
@@ -482,15 +510,11 @@ if __name__ == "__main__":
             norecText.draw(raWin)
             raWin.flip()
 
-        #Initialize the cv2 Window (so we can re-focus back to psychopy)
-        if recVideo:
-            cv2.namedWindow('RA View', cv2.WINDOW_AUTOSIZE)
 
         # Bring Participant Window to the front
         win.winHandle.activate()
         while routineTimer.getTime() > 0 and not endExpNow:
             #collect time stamp for each image:
-            runTS[thisRun] += [core.getTime()]
             if event.getKeys(quitKey):
                 scanOver = True
                 if recVideo:
@@ -501,14 +525,8 @@ if __name__ == "__main__":
                 endExpNow = True
                 break
             if recVideo:
-                #read a frame, queue it, and display it:
-                ret, frame = cap.read()
-                if useAperture:
-                    update_queue.put(reFrame(frame, aperture))
-                    cv2.imshow('RA View', reFrame(frame, aperture))
-                else:
-                    update_queue.put(frame)
-                    cv2.imshow('RA View', frame)
+                recFrame(cap, aperture=aperture)
+                runTS[thisRun].append(globalClock.getTime())
         runEndTime = datetime.datetime.today()
         logging.info('Run %s finished: %s' % (thisRun + 1, runEndTime.strftime(timestampFormat)))
         events.append({'condition': 'RunEnd',
