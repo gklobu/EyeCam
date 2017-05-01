@@ -224,7 +224,7 @@ def waitForTrigger(clocks):
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 #Countdown 4,3,2,1 every 2 seconds at start of REST
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-def count_down(win, recorder, record_countdown=True):
+def count_down(win, recorder, record_countdown=False):
     # Create images for Routine "countdown"
     counter = visual.TextStim(win=win,
                               ori=0,
@@ -244,7 +244,7 @@ def count_down(win, recorder, record_countdown=True):
         win.flip()
         flip_time = core.getTime()
         while core.getTime() - flip_time < 2:
-            if recorder and record_countdown:
+            if record_countdown:
                 recorder.cap_frame(globalClock)
             if event.getKeys(quitKey):
                 if recorder:
@@ -341,7 +341,7 @@ def scanInit():
     if 'record_countdown' in config.keys():
         record_countdown = config['record_countdown'] == 'yes'
     else:
-        record_countdown = True
+        record_countdown = False
 
     return expInfo, logFile, expName, nRuns, recorder, runDuration, filebase, record_countdown
 
