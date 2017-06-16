@@ -451,15 +451,15 @@ if __name__ == "__main__":
         waitText.draw()
         raWin.flip()
         
+        # Run Output Filename
+        filename = filebase + '_'.join(['', 'run%s' % (thisRun + 1), expInfo['date']])
+    
         if recVideo:
             #Queue of frames from cap; data collection loop adds frames, video writing process
             #pops frames (FIFO):
             update_queue = Queue()
             #Flag to tell parallel process when to exit loop
             quit_flag = Value(c_bool, False)
-            
-            # Output Video Filename
-            filename = filebase + '_'.join(['', 'run%s' % (thisRun + 1), expInfo['date']])
 
             #Write file in another process:
             writeProc = Process(name='Write',
