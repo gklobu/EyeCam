@@ -255,7 +255,7 @@ def count_down(win, cap=None, aperture=None, timestamps=None, clock=None):
             if cap:
                 recFrame(cap, aperture=aperture)
                 timestamps.append(clock.getTime())
-            if event.getKeys(quitKey):
+            if event.getKeys(keyList=[quitKey]):
                 core.quit()
                 break
 
@@ -515,7 +515,7 @@ if __name__ == "__main__":
         win.winHandle.activate()
         while routineTimer.getTime() > 0 and not endExpNow:
             #collect time stamp for each image:
-            if event.getKeys(quitKey):
+            if event.getKeys(keyList=[quitKey]):
                 scanOver = True
                 if recVideo:
                     writeProc.terminate()
