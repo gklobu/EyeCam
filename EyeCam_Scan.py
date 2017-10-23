@@ -230,8 +230,8 @@ def waitForTrigger(clocks):
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def count_down(win, cap=None, aperture=None, timestamps=None, clock=None):
     # Create images for Routine "countdown"
-    # To record images during the countdown, provide the cv VideoCapture instance, an aperture 
-    # (or None) to reframe the recorded image, a list of timestamps to append times to, and a 
+    # To record images during the countdown, provide the cv VideoCapture instance, an aperture
+    # (or None) to reframe the recorded image, a list of timestamps to append times to, and a
     # psychopy Clock to read times from.
     counter = visual.TextStim(win=win,
                               ori=0,
@@ -450,10 +450,10 @@ if __name__ == "__main__":
         #Indicate script is waiting for trigger:
         waitText.draw()
         raWin.flip()
-        
+
         # Run Output Filename
         filename = filebase + '_'.join(['', 'run%s' % (thisRun + 1), expInfo['date']])
-    
+
         if recVideo:
             #Queue of frames from cap; data collection loop adds frames, video writing process
             #pops frames (FIFO):
@@ -466,7 +466,7 @@ if __name__ == "__main__":
                                 target=writeVid,
                                 args=(update_queue, quit_flag, thisRun, filename + vidExt))
             writeProc.start()
-            
+
             #Initialize the cv2 Window (so we can re-focus back to psychopy)
             cv2.namedWindow('RA View', cv2.WINDOW_AUTOSIZE)
 
