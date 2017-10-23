@@ -337,7 +337,7 @@ def scanInit():
             runDuration = 390.4  # sec plus TR adjustmnet
         else:  #if 5-7yo
             nRuns = 3
-            runDuration = 180
+            runDuration = 210.4  # .8ms TR * 263 Frames
 
     # Eye-Tracking Params
     recVideo = config['record'] == 'yes'
