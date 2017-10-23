@@ -29,6 +29,7 @@ for taskscript in REST mbPCASL; do
 done
 rm EyeCam_Scan.py
 rm siteConfigUMN.yaml
+rm -r patch
 cd ..
 
 date=`date +%Y-%m-%d`
