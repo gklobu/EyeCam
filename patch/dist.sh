@@ -14,6 +14,7 @@ if [ -d $task ]; then rm -rf $task; fi
 git clone $repo_dir $task
 cd $task
 for taskscript in REST mbPCASL; do
+  git checkout 2019Study  # Explicilty choose branch for dist (often master)
   cp EyeCam_Scan.py ${taskscript}_Scan.py
   if [ "$taskscript" = REST ]; then
     select="\[\'REST\', \'mbPCASL\'\]"

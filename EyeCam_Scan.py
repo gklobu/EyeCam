@@ -332,12 +332,8 @@ def scanInit():
         nRuns = 1
         runDuration = 325.2  # sec
     else:  # expInfo['scan type'] == 'REST'
-        if age >= 8:
-            nRuns = 2
-            runDuration = 390.4  # sec plus TR adjustmnet
-        else:  #if 5-7yo
-            nRuns = 3
-            runDuration = 210.4  # .8ms TR * 263 Frames
+        nRuns = 1
+        runDuration = 272  # .8s TR * X 340 Frames
 
     # Eye-Tracking Params
     recVideo = config['record'] == 'yes'
