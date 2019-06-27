@@ -296,7 +296,7 @@ def gitVersion():
 #::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 def scanInit():
     expInfo = {'scan type': ['SELECT SCAN TYPE', 'REST', 'mbPCASL'],
-            'age': u'',
+            # 'age': u'',
             'sessionID': u'',
             'runNumber': '1',
             'test mode': False}
@@ -326,6 +326,8 @@ def scanInit():
         age = float(expInfo['age'])
     except ValueError:
         raise ValueError("Please enter age in years")
+    except KeyError:
+        age = np.nan
 
     # Set Run Number and Duration based on Age and Scan Type
     if expInfo['scan type'] == 'mbPCASL':

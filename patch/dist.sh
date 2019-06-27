@@ -7,13 +7,15 @@ set -o pipefail
 
 # git status
 repo_dir=`pwd`
-task=REST_mbPCASL_Combined
+# task=REST_mbPCASL_Combined
+task=REST
 
 pushd /tmp > /dev/null
 if [ -d $task ]; then rm -rf $task; fi
 git clone $repo_dir $task
 cd $task
-for taskscript in REST mbPCASL; do
+# for taskscript in REST mbPCASL; do
+for taskscript in REST; do
   git checkout 2019Study  # Explicilty choose branch for dist (often master)
   cp EyeCam_Scan.py ${taskscript}_Scan.py
   if [ "$taskscript" = REST ]; then
