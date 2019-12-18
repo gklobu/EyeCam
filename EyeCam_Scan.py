@@ -335,7 +335,7 @@ def scanInit():
         runDuration = 325.2  # sec
     else:  # expInfo['scan type'] == 'REST'
         nRuns = 1
-        runDuration = 272  # .8s TR * X 340 Frames
+        runDuration = 240  # .8s TR * X 300 Frames
 
     # Eye-Tracking Params
     recVideo = config['record'] == 'yes'
